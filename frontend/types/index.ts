@@ -181,3 +181,79 @@ export interface ForecastSummary {
   forecasts: Forecast[];
 }
 
+export interface Recommendation {
+  id: number;
+  equipment_id: string;
+  recommendation_type: "RETURN" | "REASSIGN" | "EXTEND" | "INVESTIGATE" | string;
+  priority: "CRITICAL" | "HIGH" | "MEDIUM" | "LOW" | string;
+  explanation: string;
+  action: string;
+  confidence: number;
+  estimated_impact?: {
+    impact_type?: string;
+    estimated_savings_usd?: number;
+    daily_rate?: number;
+    avoidable_days?: number;
+    days_overdue?: number;
+    calculation_basis?: string;
+  } | null;
+  status: "PENDING" | "IN_PROGRESS" | "COMPLETED" | "DISMISSED" | string;
+  created_at: string;
+  resolved_at?: string | null;
+}
+
+export interface Action {
+  id: number;
+  equipment_id: string;
+  recommendation_id?: number | null;
+  alert_id?: number | null;
+  action_type: "RETURN" | "REASSIGN" | "EXTEND" | "INVESTIGATE" | string;
+  status: "PENDING" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED" | string;
+  priority: "CRITICAL" | "HIGH" | "MEDIUM" | "LOW" | string;
+  notes?: string | null;
+  actor: string;
+  payload_json?: Record<string, any> | null;
+  created_at: string;
+  completed_at?: string | null;
+}
+
+export interface ImpactRecord {
+  id: number;
+  action_id?: number | null;
+  equipment_id: string;
+  site_id?: string | null;
+  impact_type: string;
+  estimated_amount: number;
+  realized_amount: number;
+  currency: string;
+  calculation_basis: string;
+  before_state?: Record<string, any> | null;
+  after_state?: Record<string, any> | null;
+  calculated_at: string;
+}
+
+export interface ImpactDetail {
+  action_id?: number | null;
+  equipment_id: string;
+  action_type: string;
+  impact_type: string;
+  daily_rate: number;
+  baseline_metrics: Record<string, any>;
+  avoided_cost: number;
+  realized_savings: number;
+  calculation_basis: string;
+  status: string;
+  calculated_at: string;
+}
+
+export interface ImpactSummary {
+  total_estimated_impact: number;
+  total_realized_savings: number;
+  completed_actions_count: number;
+  savings_by_action_type: Record<string, number>;
+  savings_by_site: Record<string, number>;
+  savings_by_equipment_type: Record<string, number>;
+  recent_impact_records: ImpactRecord[];
+}
+
+

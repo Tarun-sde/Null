@@ -317,16 +317,18 @@ def evaluate_equipment_anomalies(
     """
     current_time = now or datetime.now(timezone.utc)
     current_rental = rental or get_current_rental(equipment)
+    tel = latest_telemetry or (equipment.telemetry[0] if getattr(equipment, "telemetry", None) else None)
     
     anomalies: List[AnomalyResult] = []
 
     # 1. Rule A: Excessive Idle
-    res_idle = evaluate_excessive_idle(equipment.id, latest_telemetry, current_rental, now=current_time)
+    res_idle = evaluate_excessive_idle(equipment.id, tel, current_rental, now=current_time)
+
     if res_idle:
         anomalies.append(res_idle)
 
     # 2. Rule B: Zero Runtime
-    res_zero = evaluate_zero_runtime(equipment.id, latest_telemetry, current_rental, now=current_time)
+    res_zero = evaluate_zero_runtime(equipment.id, tel, current_rental, now=current_time)
     if res_zero:
         anomalies.append(res_zero)
 
@@ -341,9 +343,10 @@ def evaluate_equipment_anomalies(
         anomalies.append(res_overdue)
 
     # 5. Rule E: Low Utilization
-    res_util = evaluate_low_utilization(equipment.id, latest_telemetry, current_rental, now=current_time)
+    res_util = evaluate_low_utilization(equipment.id, tel, current_rental, now=current_time)
     if res_util:
         anomalies.append(res_util)
+
 
     # Apply deterministic multi-signal compound boost if multiple distinct anomaly signals coincide
     if len(anomalies) > 1:

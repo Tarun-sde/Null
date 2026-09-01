@@ -12,14 +12,15 @@ import { ActivityTimeline } from "@/components/dashboard/ActivityTimeline";
 import { EquipmentTable } from "@/components/dashboard/EquipmentTable";
 import { CardSkeleton, TableSkeleton } from "@/components/ui/SkeletonLoader";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { fetchDashboardKPIs, fetchEquipmentList, fetchAlerts } from "@/lib/api";
+import { fetchDashboardKPIs, fetchEquipmentList, fetchAlerts, fetchRecommendations } from "@/lib/api";
 import { useTelemetryStream } from "@/lib/useTelemetryStream";
-import { DashboardKPIs, EquipmentListItem, TelemetryStreamEvent, Telemetry, Alert } from "@/types";
+import { DashboardKPIs, EquipmentListItem, TelemetryStreamEvent, Telemetry, Alert, Recommendation } from "@/types";
 
 export default function DashboardPage() {
   const [kpis, setKpis] = useState<DashboardKPIs | null>(null);
   const [equipmentList, setEquipmentList] = useState<EquipmentListItem[]>([]);
   const [alerts, setAlerts] = useState<Alert[]>([]);
+  const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -28,14 +29,16 @@ export default function DashboardPage() {
     try {
       setLoading(true);
       setError(null);
-      const [kpiRes, eqRes, alertRes] = await Promise.all([
+      const [kpiRes, eqRes, alertRes, recRes] = await Promise.all([
         fetchDashboardKPIs(),
         fetchEquipmentList(),
         fetchAlerts({ status: "OPEN" }).catch(() => []),
+        fetchRecommendations({ status: "PENDING" }).catch(() => []),
       ]);
       setKpis(kpiRes);
       setEquipmentList(eqRes);
       setAlerts(alertRes);
+      setRecommendations(recRes);
     } catch (err: any) {
       console.error("Dashboard data load error:", err);
       setError(err.message || "Failed to load fleet data");
@@ -43,6 +46,7 @@ export default function DashboardPage() {
       setLoading(false);
     }
   };
+
 
 
   useEffect(() => {
@@ -225,7 +229,10 @@ export default function DashboardPage() {
           <AlertsPanel alerts={alerts} />
         </div>
         <div>
-          <RecommendationsPanel />
+          <RecommendationsPanel
+            recommendations={recommendations}
+            onActionTriggered={loadInitialData}
+          />
         </div>
         <div>
           <ActivityTimeline />

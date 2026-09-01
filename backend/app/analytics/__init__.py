@@ -17,6 +17,19 @@ from app.analytics.forecasting import (
     calculate_deterministic_confidence,
     sync_forecasts_to_db,
 )
+from app.analytics.recommendation_engine import (
+    RecommendationResult,
+    evaluate_equipment_recommendations,
+    generate_fleet_recommendations,
+    sync_recommendations_to_db,
+    calculate_idle_reassignment_impact,
+    calculate_overdue_return_impact,
+)
+from app.analytics.impact_engine import (
+    calculate_action_impact_estimate,
+    record_realized_action_savings,
+    get_fleet_impact_summary,
+)
 
 __all__ = [
     "AnomalyResult",
@@ -34,4 +47,13 @@ __all__ = [
     "calculate_backtest_mae",
     "calculate_deterministic_confidence",
     "sync_forecasts_to_db",
+    "RecommendationResult",
+    "evaluate_equipment_recommendations",
+    "generate_fleet_recommendations",
+    "sync_recommendations_to_db",
+    "calculate_idle_reassignment_impact",
+    "calculate_overdue_return_impact",
+    "calculate_action_impact_estimate",
+    "record_realized_action_savings",
+    "get_fleet_impact_summary",
 ]

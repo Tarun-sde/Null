@@ -17,9 +17,25 @@ from app.schemas.rental import (
 from app.schemas.alert import AlertBase, AlertResponse
 from app.schemas.anomaly import AnomalyResponse, FleetAnomalySummary
 from app.schemas.forecast import ForecastBase, ForecastResponse, ForecastFleetSummary
-from app.schemas.audit import AuditEventBase, AuditEventResponse
-from app.schemas.equipment import EquipmentBase, EquipmentListItem, EquipmentDetailResponse
-from app.schemas.dashboard import DashboardKPIResponse
+from app.schemas.recommendation import (
+    RecommendationBase,
+    RecommendationResponse,
+    RecommendationActionRequest,
+)
+from app.schemas.action import (
+    ActionBase,
+    ActionResponse,
+    ActionCreateRequest,
+    ActionCompleteRequest,
+    ActionCancelRequest,
+    AlertResolveRequest,
+)
+from app.schemas.impact import (
+    ImpactRecordBase,
+    ImpactResponse,
+    ImpactDetailResponse,
+    ImpactSummaryResponse,
+)
 
 __all__ = [
     "SiteBase",
@@ -43,6 +59,19 @@ __all__ = [
     "ForecastBase",
     "ForecastResponse",
     "ForecastFleetSummary",
+    "RecommendationBase",
+    "RecommendationResponse",
+    "RecommendationActionRequest",
+    "ActionBase",
+    "ActionResponse",
+    "ActionCreateRequest",
+    "ActionCompleteRequest",
+    "ActionCancelRequest",
+    "AlertResolveRequest",
+    "ImpactRecordBase",
+    "ImpactResponse",
+    "ImpactDetailResponse",
+    "ImpactSummaryResponse",
     "AuditEventBase",
     "AuditEventResponse",
     "EquipmentBase",
@@ -50,4 +79,5 @@ __all__ = [
     "EquipmentDetailResponse",
     "DashboardKPIResponse",
 ]
+
 

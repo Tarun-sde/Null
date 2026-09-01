@@ -21,7 +21,9 @@ import {
   AlertTriangle,
   ArrowRight,
   ShieldCheck,
+  Zap,
 } from "lucide-react";
+
 import { AppShell } from "@/components/layout/AppShell";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { StatusBadge } from "@/components/ui/StatusBadge";
@@ -31,9 +33,9 @@ import { CardSkeleton } from "@/components/ui/SkeletonLoader";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { CheckoutModal } from "@/components/handoff/CheckoutModal";
 import { CheckinModal } from "@/components/handoff/CheckinModal";
-import { fetchEquipmentDetail, fetchEquipmentAnomalies } from "@/lib/api";
+import { fetchEquipmentDetail, fetchEquipmentAnomalies, fetchEquipmentRecommendations, triggerActionFromRecommendation } from "@/lib/api";
 import { useTelemetryStream } from "@/lib/useTelemetryStream";
-import { EquipmentDetail, EquipmentStatus, TelemetryStreamEvent, Telemetry, Anomaly } from "@/types";
+import { EquipmentDetail, EquipmentStatus, TelemetryStreamEvent, Telemetry, Anomaly, Recommendation } from "@/types";
 import { STATUS_CONFIG } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 
@@ -44,8 +46,10 @@ export default function AssetDetailPage() {
 
   const [equipment, setEquipment] = useState<EquipmentDetail | null>(null);
   const [anomalies, setAnomalies] = useState<Anomaly[]>([]);
+  const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isTriggeringAction, setIsTriggeringAction] = useState(false);
 
   // Workflow Modal States
   const [checkoutModalOpen, setCheckoutModalOpen] = useState(false);
@@ -56,12 +60,14 @@ export default function AssetDetailPage() {
     try {
       setLoading(true);
       setError(null);
-      const [data, anomData] = await Promise.all([
+      const [data, anomData, recData] = await Promise.all([
         fetchEquipmentDetail(id),
         fetchEquipmentAnomalies(id).catch(() => []),
+        fetchEquipmentRecommendations(id).catch(() => []),
       ]);
       setEquipment(data);
       setAnomalies(anomData);
+      setRecommendations(recData);
     } catch (err: any) {
       console.error("Error loading asset detail:", err);
       setError(err.message === "NOT_FOUND" ? "Equipment Not Found" : "Failed to load asset");
@@ -69,6 +75,7 @@ export default function AssetDetailPage() {
       setLoading(false);
     }
   };
+
 
 
   useEffect(() => {
@@ -348,18 +355,22 @@ export default function AssetDetailPage() {
 
       {/* AI Operational Insight & Active Alerts */}
       <section className="grid md:grid-cols-2 gap-8 mb-8 items-stretch">
-        {/* AI Insight Card */}
+        {/* AI Insight & Recommendation Card */}
         <GlassCard variant="dark" className="p-7 flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Sparkles className="size-4 text-[#ff5a24]" />
                 <h3 className="text-xs font-semibold uppercase tracking-wider text-white">
-                  Intelligence &amp; Diagnostics
+                  Recommendation &amp; Action
                 </h3>
               </div>
               <div className="flex items-center gap-2">
-                {anomalies.length > 0 ? (
+                {recommendations.length > 0 && recommendations[0].estimated_impact?.estimated_savings_usd ? (
+                  <span className="text-xs font-mono text-emerald-400 bg-emerald-500/20 px-2.5 py-0.5 rounded-full border border-emerald-500/40 font-bold">
+                    +${Math.round(recommendations[0].estimated_impact.estimated_savings_usd).toLocaleString()} Avoidable Loss
+                  </span>
+                ) : anomalies.length > 0 ? (
                   <span className="text-xs font-mono text-[#ff5a24] bg-white/10 px-2.5 py-0.5 rounded-full border border-white/20">
                     Anomaly Score: <strong>{anomalies[0].anomaly_score}</strong>/100
                   </span>
@@ -372,43 +383,57 @@ export default function AssetDetailPage() {
             </div>
 
             <div className="mt-5 space-y-3">
-              {anomalies.length > 0 ? (
-                anomalies.map((anom, idx) => (
+              {recommendations.length > 0 ? (
+                recommendations.map((rec) => (
                   <div
-                    key={idx}
-                    className={cn(
-                      "rounded-xl border p-4 space-y-2",
-                      anom.severity === "CRITICAL"
-                        ? "border-red-500/40 bg-red-500/10 text-white"
-                        : anom.severity === "WARNING"
-                        ? "border-amber-500/40 bg-amber-500/10 text-white"
-                        : "border-blue-500/40 bg-blue-500/10 text-white"
-                    )}
+                    key={rec.id}
+                    className="rounded-xl border border-white/15 bg-white/10 p-4 space-y-3"
                   >
                     <div className="flex items-center justify-between">
-                      <span className="font-semibold text-sm text-white">
-                        {anom.anomaly_type.replace("_", " ")}
-                      </span>
-                      <span className="text-[10px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-black/40 border border-white/20">
-                        {anom.severity}
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-white uppercase tracking-wider font-mono">
+                          {rec.recommendation_type}
+                        </span>
+                        <span
+                          className={cn(
+                            "text-[10px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded border",
+                            rec.priority === "CRITICAL"
+                              ? "bg-red-500/20 text-red-300 border-red-500/40"
+                              : "bg-[#ff5a24]/20 text-[#ff8a5c] border-[#ff5a24]/40"
+                          )}
+                        >
+                          {rec.priority}
+                        </span>
+                      </div>
+                      <span className="text-[10px] text-white/60 font-mono">
+                        {Math.round(rec.confidence * 100)}% Confidence
                       </span>
                     </div>
 
                     <p className="text-xs text-white/90 leading-relaxed">
-                      {anom.explanation}
+                      {rec.explanation}
                     </p>
 
-                    {/* Supporting Signals Grid */}
-                    {Object.keys(anom.supporting_signals).length > 0 && (
-                      <div className="pt-2 border-t border-white/10 grid grid-cols-2 sm:grid-cols-3 gap-2 text-[11px] font-mono text-white/70">
-                        {Object.entries(anom.supporting_signals).map(([k, v]) => (
-                          <div key={k} className="bg-black/20 p-1.5 rounded">
-                            <span className="text-white/50 block text-[9px] uppercase">{k.replace("_", " ")}</span>
-                            <span className="text-white font-semibold">{String(v)}</span>
-                          </div>
-                        ))}
+                    {rec.estimated_impact?.calculation_basis && (
+                      <div className="rounded-lg bg-black/40 p-2.5 text-[11px] font-mono text-emerald-300 border border-emerald-500/20">
+                        {rec.estimated_impact.calculation_basis}
                       </div>
                     )}
+                  </div>
+                ))
+              ) : anomalies.length > 0 ? (
+                anomalies.map((anom, idx) => (
+                  <div
+                    key={idx}
+                    className="rounded-xl border border-red-500/40 bg-red-500/10 p-4 text-white space-y-2"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-semibold text-sm">{anom.anomaly_type.replace("_", " ")}</span>
+                      <span className="text-[10px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-black/40 border border-white/20">
+                        {anom.severity}
+                      </span>
+                    </div>
+                    <p className="text-xs text-white/90 leading-relaxed">{anom.explanation}</p>
                   </div>
                 ))
               ) : (
@@ -425,8 +450,32 @@ export default function AssetDetailPage() {
           </div>
 
           <div className="mt-6 pt-4 border-t border-white/10 flex items-center justify-between text-xs text-white/70">
-            <span>Deterministic Anomaly Scoring Active</span>
-            {hasActiveRental ? (
+            <span>Deterministic ROI Calibrated</span>
+            {recommendations.length > 0 ? (
+              <button
+                disabled={isTriggeringAction}
+                onClick={async () => {
+                  try {
+                    setIsTriggeringAction(true);
+                    await triggerActionFromRecommendation(recommendations[0].id, {
+                      action_type: recommendations[0].recommendation_type,
+                      notes: `Executed from Asset Detail (${equipment.id}): ${recommendations[0].action}`,
+                      actor: "Commander Marcus Vance",
+                      payload: recommendations[0].estimated_impact || {},
+                    });
+                    router.push("/actions");
+                  } catch (err: any) {
+                    alert(`Error triggering action: ${err.message}`);
+                  } finally {
+                    setIsTriggeringAction(false);
+                  }
+                }}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-[#ff5a24] px-4 py-2 text-xs font-semibold text-white hover:bg-[#ff6330] transition-colors disabled:opacity-50"
+              >
+                <Zap className="size-3.5" />
+                <span>{isTriggeringAction ? "Queuing..." : `Execute ${recommendations[0].recommendation_type}`}</span>
+              </button>
+            ) : hasActiveRental ? (
               <button
                 onClick={() => setCheckinModalOpen(true)}
                 className="rounded-lg bg-[#ff5a24] px-4 py-2 text-xs font-semibold text-white hover:bg-[#ff6330] transition-colors"
@@ -443,6 +492,7 @@ export default function AssetDetailPage() {
             )}
           </div>
         </GlassCard>
+
 
 
         {/* Active Alerts for this asset */}

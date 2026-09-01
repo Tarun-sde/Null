@@ -8,6 +8,8 @@ from app.models.alert import Alert
 from app.models.forecast import Forecast
 from app.models.recommendation import Recommendation
 from app.models.audit_event import AuditEvent
+from app.models.action import Action
+from app.models.impact import ImpactRecord
 
 __all__ = [
     "Base",
@@ -20,4 +22,7 @@ __all__ = [
     "Forecast",
     "Recommendation",
     "AuditEvent",
+    "Action",
+    "ImpactRecord",
 ]
+

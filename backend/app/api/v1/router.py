@@ -8,6 +8,9 @@ from app.api.v1.telemetry import router as telemetry_router
 from app.api.v1.anomalies import router as anomalies_router
 from app.api.v1.alerts import router as alerts_router
 from app.api.v1.forecasts import router as forecasts_router
+from app.api.v1.recommendations import router as recommendations_router
+from app.api.v1.actions import router as actions_router
+from app.api.v1.impact import router as impact_router
 
 api_v1_router = APIRouter(prefix="/api/v1")
 api_v1_router.include_router(equipment_router)
@@ -19,4 +22,8 @@ api_v1_router.include_router(telemetry_router)
 api_v1_router.include_router(anomalies_router)
 api_v1_router.include_router(alerts_router)
 api_v1_router.include_router(forecasts_router)
+api_v1_router.include_router(recommendations_router)
+api_v1_router.include_router(actions_router)
+api_v1_router.include_router(impact_router)
+
 

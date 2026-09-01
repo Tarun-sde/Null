@@ -18,6 +18,8 @@ from app.models import (
     Forecast,
     Recommendation,
     AuditEvent,
+    Action,
+    ImpactRecord,
 )
 
 # Deterministic anchor timestamp
@@ -29,9 +31,10 @@ def reset_database(db: Session):
     Reset demo database tables.
     Works across PostgreSQL (TRUNCATE) and SQLite (DELETE).
     """
+    Base.metadata.create_all(bind=db.bind)
     dialect_name = db.bind.dialect.name if db.bind else "sqlite"
     if dialect_name == "postgresql":
-        db.execute(text("TRUNCATE TABLE audit_events, recommendations, forecasts, alerts, telemetry, rentals, operators, sites, equipment RESTART IDENTITY CASCADE;"))
+        db.execute(text("TRUNCATE TABLE impact_records, actions, audit_events, recommendations, forecasts, alerts, telemetry, rentals, operators, sites, equipment RESTART IDENTITY CASCADE;"))
         db.commit()
     else:
         for table in reversed(Base.metadata.sorted_tables):
@@ -45,8 +48,10 @@ def seed_database(db: Session, reset: bool = True, anchor_time: datetime = ANCHO
     Seeds the 7 challenge equipment assets, 3 sites, 4 operators,
     associated rental scenarios, telemetry streams, and audit history.
     """
+    Base.metadata.create_all(bind=db.bind)
     if reset:
         reset_database(db)
+
 
     base_time = anchor_time
 
