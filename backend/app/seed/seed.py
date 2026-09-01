@@ -1,4 +1,9 @@
+import os
+import sys
 from datetime import datetime, timedelta, timezone
+
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
+
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from app.db.session import SessionLocal

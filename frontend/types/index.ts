@@ -28,6 +28,18 @@ export interface Telemetry {
   created_at?: string;
 }
 
+export interface TelemetryStreamEvent {
+  equipment_id: string;
+  timestamp: string;
+  latitude: number;
+  longitude: number;
+  engine_hours: number;
+  idle_hours: number;
+  fuel_pct: number;
+  utilization_rate: number;
+  status: string;
+}
+
 export interface Rental {
   id: number;
   equipment_id: string;
@@ -52,9 +64,11 @@ export interface Alert {
   message: string;
   status: "OPEN" | "RESOLVED" | "ACKNOWLEDGED" | string;
   metadata_json?: Record<string, any> | null;
+  action_label?: string | null;
   created_at: string;
   resolved_at?: string | null;
 }
+
 
 export interface AuditEvent {
   id: number;
@@ -133,3 +147,37 @@ export interface CheckinResponse {
   rental: Rental;
   audit_event: AuditEvent;
 }
+
+export interface Anomaly {
+  equipment_id: string;
+  anomaly_type: string;
+  anomaly_score: number;
+  severity: "CRITICAL" | "WARNING" | "INFO" | string;
+  explanation: string;
+  supporting_signals: Record<string, any>;
+  recommended_action_category?: string | null;
+  detected_at: string;
+}
+
+export interface Forecast {
+  id: number;
+  site_id?: string | null;
+  site_name?: string | null;
+  equipment_type: string;
+  forecast_date: string;
+  predicted_units: number;
+  confidence: number;
+  backtest_error?: number | null;
+  drivers?: Record<string, any> | null;
+  explanation?: string | null;
+  created_at: string;
+}
+
+export interface ForecastSummary {
+  total_forecasted_units: number;
+  avg_confidence: number;
+  avg_backtest_error?: number | null;
+  horizon_weeks: number;
+  forecasts: Forecast[];
+}
+

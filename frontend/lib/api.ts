@@ -106,3 +106,94 @@ export async function checkinEquipment(payload: CheckinPayload): Promise<Checkin
   }
   return res.json();
 }
+
+export async function fetchAlerts(params?: {
+  severity?: string;
+  status?: string;
+  equipment_id?: string;
+  type?: string;
+}): Promise<import("@/types").Alert[]> {
+  const query = new URLSearchParams();
+  if (params?.severity) query.append("severity", params.severity);
+  if (params?.status) query.append("status", params.status);
+  if (params?.equipment_id) query.append("equipment_id", params.equipment_id);
+  if (params?.type) query.append("type", params.type);
+
+  const url = `${API_BASE_URL}/api/v1/alerts${query.toString() ? `?${query.toString()}` : ""}`;
+  const res = await fetch(url, {
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    throw new Error(`Failed to fetch alerts: ${res.status} ${res.statusText}`);
+  }
+  return res.json();
+}
+
+export async function fetchAnomalies(params?: {
+  equipment_id?: string;
+  severity?: string;
+  type?: string;
+}): Promise<import("@/types").Anomaly[]> {
+  const query = new URLSearchParams();
+  if (params?.equipment_id) query.append("equipment_id", params.equipment_id);
+  if (params?.severity) query.append("severity", params.severity);
+  if (params?.type) query.append("type", params.type);
+
+  const url = `${API_BASE_URL}/api/v1/anomalies${query.toString() ? `?${query.toString()}` : ""}`;
+  const res = await fetch(url, {
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    throw new Error(`Failed to fetch anomalies: ${res.status} ${res.statusText}`);
+  }
+  return res.json();
+}
+
+export async function fetchEquipmentAnomalies(id: string): Promise<import("@/types").Anomaly[]> {
+  const res = await fetch(`${API_BASE_URL}/api/v1/equipment/${encodeURIComponent(id)}/anomalies`, {
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    throw new Error(`Failed to fetch equipment anomalies: ${res.status} ${res.statusText}`);
+  }
+  return res.json();
+}
+
+export async function fetchForecasts(params?: {
+  site_id?: string;
+  equipment_type?: string;
+  horizon_weeks?: number;
+}): Promise<import("@/types").Forecast[]> {
+  const query = new URLSearchParams();
+  if (params?.site_id) query.append("site_id", params.site_id);
+  if (params?.equipment_type) query.append("equipment_type", params.equipment_type);
+  if (params?.horizon_weeks) query.append("horizon_weeks", params.horizon_weeks.toString());
+
+  const url = `${API_BASE_URL}/api/v1/forecasts${query.toString() ? `?${query.toString()}` : ""}`;
+  const res = await fetch(url, {
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    throw new Error(`Failed to fetch forecasts: ${res.status} ${res.statusText}`);
+  }
+  return res.json();
+}
+
+export async function fetchForecastSummary(params?: {
+  site_id?: string;
+  horizon_weeks?: number;
+}): Promise<import("@/types").ForecastSummary> {
+  const query = new URLSearchParams();
+  if (params?.site_id) query.append("site_id", params.site_id);
+  if (params?.horizon_weeks) query.append("horizon_weeks", params.horizon_weeks.toString());
+
+  const url = `${API_BASE_URL}/api/v1/forecasts/summary${query.toString() ? `?${query.toString()}` : ""}`;
+  const res = await fetch(url, {
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    throw new Error(`Failed to fetch forecast summary: ${res.status} ${res.statusText}`);
+  }
+  return res.json();
+}
+

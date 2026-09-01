@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { AppShell } from "@/components/layout/AppShell";
 import { HeroOverview } from "@/components/dashboard/HeroOverview";
 import { MetricCard } from "@/components/ui/MetricCard";
@@ -12,25 +12,30 @@ import { ActivityTimeline } from "@/components/dashboard/ActivityTimeline";
 import { EquipmentTable } from "@/components/dashboard/EquipmentTable";
 import { CardSkeleton, TableSkeleton } from "@/components/ui/SkeletonLoader";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { fetchDashboardKPIs, fetchEquipmentList } from "@/lib/api";
-import { DashboardKPIs, EquipmentListItem } from "@/types";
+import { fetchDashboardKPIs, fetchEquipmentList, fetchAlerts } from "@/lib/api";
+import { useTelemetryStream } from "@/lib/useTelemetryStream";
+import { DashboardKPIs, EquipmentListItem, TelemetryStreamEvent, Telemetry, Alert } from "@/types";
 
 export default function DashboardPage() {
   const [kpis, setKpis] = useState<DashboardKPIs | null>(null);
   const [equipmentList, setEquipmentList] = useState<EquipmentListItem[]>([]);
+  const [alerts, setAlerts] = useState<Alert[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const loadData = async () => {
+  // Initial load
+  const loadInitialData = async () => {
     try {
       setLoading(true);
       setError(null);
-      const [kpiRes, eqRes] = await Promise.all([
+      const [kpiRes, eqRes, alertRes] = await Promise.all([
         fetchDashboardKPIs(),
         fetchEquipmentList(),
+        fetchAlerts({ status: "OPEN" }).catch(() => []),
       ]);
       setKpis(kpiRes);
       setEquipmentList(eqRes);
+      setAlerts(alertRes);
     } catch (err: any) {
       console.error("Dashboard data load error:", err);
       setError(err.message || "Failed to load fleet data");
@@ -39,12 +44,94 @@ export default function DashboardPage() {
     }
   };
 
+
   useEffect(() => {
-    loadData();
+    loadInitialData();
   }, []);
 
+  // Handle incoming real-time telemetry events from SSE
+  const handleLiveTelemetry = useCallback((event: TelemetryStreamEvent) => {
+    setEquipmentList((prevList) => {
+      let statusChanged = false;
+      const updatedList = prevList.map((item) => {
+        if (item.id === event.equipment_id) {
+          if (item.status !== event.status) {
+            statusChanged = true;
+          }
+          const updatedTelemetry: Telemetry = {
+            equipment_id: event.equipment_id,
+            timestamp: typeof event.timestamp === "string" ? event.timestamp : new Date(event.timestamp).toISOString(),
+            latitude: event.latitude,
+            longitude: event.longitude,
+            engine_hours: event.engine_hours,
+            idle_hours: event.idle_hours,
+            fuel_pct: event.fuel_pct,
+          };
+          return {
+            ...item,
+            status: event.status,
+            utilization_rate: event.utilization_rate,
+            latest_telemetry: updatedTelemetry,
+          };
+        }
+        return item;
+      });
+
+      // Recalculate KPIs locally if status changed
+      if (statusChanged) {
+        setKpis((prevKpis) => {
+          if (!prevKpis) return prevKpis;
+          const statusCounts: Record<string, number> = {};
+          let active = 0;
+          let idle = 0;
+          let due_soon = 0;
+          let overdue = 0;
+          let unassigned = 0;
+
+          updatedList.forEach((eq) => {
+            const st = eq.status.toUpperCase();
+            statusCounts[st] = (statusCounts[st] || 0) + 1;
+            if (st === "ACTIVE") active++;
+            else if (st === "IDLE") idle++;
+            else if (st === "DUE_SOON") due_soon++;
+            else if (st === "OVERDUE") overdue++;
+            else if (st === "UNASSIGNED") unassigned++;
+          });
+
+          return {
+            ...prevKpis,
+            active,
+            idle,
+            due_soon,
+            overdue,
+            unassigned,
+            status_counts: statusCounts,
+          };
+        });
+      }
+
+      return updatedList;
+    });
+  }, []);
+
+  // Handle fallback polling updates
+  const handleFullRefresh = useCallback((data: { equipment: EquipmentListItem[]; kpis: DashboardKPIs }) => {
+    setEquipmentList(data.equipment);
+    setKpis(data.kpis);
+  }, []);
+
+  // Realtime hook
+  const { connectionState } = useTelemetryStream({
+    onTelemetry: handleLiveTelemetry,
+    onFullRefresh: handleFullRefresh,
+    enabled: !loading && !error,
+  });
+
   return (
-    <AppShell openAlertsCount={kpis?.open_alerts ?? 4}>
+    <AppShell
+      openAlertsCount={kpis?.open_alerts ?? 4}
+      connectionState={connectionState}
+    >
       {/* Hero Overview */}
       <HeroOverview
         fleetUtilizationPct={kpis?.fleet_utilization_pct ?? 63.2}
@@ -135,7 +222,7 @@ export default function DashboardPage() {
       {/* Triad Intelligence Section: Alerts + Recommendations + Timeline */}
       <section className="mb-10 grid md:grid-cols-2 lg:grid-cols-3 gap-8 items-stretch">
         <div>
-          <AlertsPanel />
+          <AlertsPanel alerts={alerts} />
         </div>
         <div>
           <RecommendationsPanel />
@@ -154,7 +241,7 @@ export default function DashboardPage() {
             title="Unable to Load Equipment Ledger"
             description="The connection to the RentSense backend API failed. Ensure the server is running on http://localhost:8000."
             actionText="Retry Connection"
-            onAction={loadData}
+            onAction={loadInitialData}
           />
         ) : (
           <EquipmentTable equipmentList={equipmentList} />

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -31,8 +31,9 @@ import { CardSkeleton } from "@/components/ui/SkeletonLoader";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { CheckoutModal } from "@/components/handoff/CheckoutModal";
 import { CheckinModal } from "@/components/handoff/CheckinModal";
-import { fetchEquipmentDetail } from "@/lib/api";
-import { EquipmentDetail, EquipmentStatus } from "@/types";
+import { fetchEquipmentDetail, fetchEquipmentAnomalies } from "@/lib/api";
+import { useTelemetryStream } from "@/lib/useTelemetryStream";
+import { EquipmentDetail, EquipmentStatus, TelemetryStreamEvent, Telemetry, Anomaly } from "@/types";
 import { STATUS_CONFIG } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 
@@ -42,6 +43,7 @@ export default function AssetDetailPage() {
   const id = params.id as string;
 
   const [equipment, setEquipment] = useState<EquipmentDetail | null>(null);
+  const [anomalies, setAnomalies] = useState<Anomaly[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -54,8 +56,12 @@ export default function AssetDetailPage() {
     try {
       setLoading(true);
       setError(null);
-      const data = await fetchEquipmentDetail(id);
+      const [data, anomData] = await Promise.all([
+        fetchEquipmentDetail(id),
+        fetchEquipmentAnomalies(id).catch(() => []),
+      ]);
       setEquipment(data);
+      setAnomalies(anomData);
     } catch (err: any) {
       console.error("Error loading asset detail:", err);
       setError(err.message === "NOT_FOUND" ? "Equipment Not Found" : "Failed to load asset");
@@ -64,9 +70,44 @@ export default function AssetDetailPage() {
     }
   };
 
+
   useEffect(() => {
     loadDetail();
   }, [id]);
+
+  // Handle incoming real-time telemetry events for this specific asset
+  const handleLiveTelemetry = useCallback((event: TelemetryStreamEvent) => {
+    if (event.equipment_id !== id) return;
+
+    setEquipment((prev) => {
+      if (!prev) return prev;
+      const updatedTelemetry: Telemetry = {
+        equipment_id: event.equipment_id,
+        timestamp: typeof event.timestamp === "string" ? event.timestamp : new Date(event.timestamp).toISOString(),
+        latitude: event.latitude,
+        longitude: event.longitude,
+        engine_hours: event.engine_hours,
+        idle_hours: event.idle_hours,
+        fuel_pct: event.fuel_pct,
+      };
+
+      const updatedHistory = [updatedTelemetry, ...(prev.recent_telemetry || [])].slice(0, 50);
+
+      return {
+        ...prev,
+        status: event.status,
+        utilization_rate: event.utilization_rate,
+        latest_telemetry: updatedTelemetry,
+        recent_telemetry: updatedHistory,
+      };
+    });
+  }, [id]);
+
+  const { connectionState } = useTelemetryStream({
+    onTelemetry: handleLiveTelemetry,
+    onFullRefresh: () => loadDetail(),
+    enabled: !loading && !error && Boolean(equipment),
+  });
 
   if (loading) {
     return (
@@ -103,14 +144,14 @@ export default function AssetDetailPage() {
   const engineHours = equipment.latest_telemetry?.engine_hours || 0;
   const idleHours = equipment.latest_telemetry?.idle_hours || 0;
   const fuelPct = equipment.latest_telemetry?.fuel_pct ?? 100;
-  const activeHours = Math.max(0, engineHours - idleHours);
+  const activeHours = Math.max(0, Math.round((engineHours - idleHours) * 100) / 100);
 
   const hasActiveRental = Boolean(
     equipment.current_rental && !equipment.current_rental.checked_in_at
   );
 
   return (
-    <AppShell>
+    <AppShell connectionState={connectionState}>
       {/* Breadcrumb & Navigation */}
       <div className="mb-6 flex items-center justify-between">
         <Link
@@ -187,13 +228,13 @@ export default function AssetDetailPage() {
             <Gauge className="size-4 text-[#ff5a24]" />
           </div>
           <p
-            className="text-3xl sm:text-4xl font-medium text-black mt-3 leading-none"
+            className="text-3xl sm:text-4xl font-medium text-black mt-3 leading-none transition-all"
             style={{ fontFamily: "var(--font-playfair), Georgia, serif" }}
           >
-            {engineHours}h
+            {engineHours.toFixed(2)}h
           </p>
           <span className="text-[11px] text-[#7a7a7a] mt-2">
-            Active: <strong className="text-black">{activeHours}h</strong> • Idle: <strong className="text-black">{idleHours}h</strong>
+            Active: <strong className="text-black">{activeHours.toFixed(2)}h</strong> • Idle: <strong className="text-black">{idleHours.toFixed(2)}h</strong>
           </span>
         </GlassCard>
 
@@ -203,14 +244,14 @@ export default function AssetDetailPage() {
             <span className="size-2 rounded-full bg-emerald-500 animate-pulse" />
           </div>
           <p
-            className="text-3xl sm:text-4xl font-medium text-black mt-3 leading-none"
+            className="text-3xl sm:text-4xl font-medium text-black mt-3 leading-none transition-all"
             style={{ fontFamily: "var(--font-playfair), Georgia, serif" }}
           >
             {utilPct}%
           </p>
           <div className="w-full bg-black/10 h-1.5 rounded-full mt-2 overflow-hidden">
             <div
-              className={cn("h-full rounded-full", utilPct < 20 ? "bg-amber-500" : "bg-[#ff5a24]")}
+              className={cn("h-full rounded-full transition-all duration-500", utilPct < 20 ? "bg-amber-500" : "bg-[#ff5a24]")}
               style={{ width: `${Math.min(100, Math.max(5, utilPct))}%` }}
             />
           </div>
@@ -222,10 +263,10 @@ export default function AssetDetailPage() {
             <Fuel className="size-4 text-[#ff5a24]" />
           </div>
           <p
-            className="text-3xl sm:text-4xl font-medium text-black mt-3 leading-none font-mono"
+            className="text-3xl sm:text-4xl font-medium text-black mt-3 leading-none font-mono transition-all"
             style={{ fontFamily: "var(--font-playfair), Georgia, serif" }}
           >
-            {fuelPct}%
+            {fuelPct.toFixed(1)}%
           </p>
           <span className="text-[11px] text-[#7a7a7a] mt-2">
             Estimated ~{Math.round(fuelPct * 1.8)} gallons remaining
@@ -294,7 +335,7 @@ export default function AssetDetailPage() {
             </div>
           </GlassCard>
 
-          {/* MiniMap */}
+          {/* MiniMap with Live GPS Pinpoint */}
           <div className="h-60">
             <MiniMap
               site={equipment.site}
@@ -314,55 +355,69 @@ export default function AssetDetailPage() {
               <div className="flex items-center gap-2">
                 <Sparkles className="size-4 text-[#ff5a24]" />
                 <h3 className="text-xs font-semibold uppercase tracking-wider text-white">
-                  Operational Recommendation
+                  Intelligence &amp; Diagnostics
                 </h3>
               </div>
-              <span className="text-xs font-mono text-[#ff5a24] bg-white/10 px-2.5 py-0.5 rounded-full border border-white/20">
-                AI Optimization
-              </span>
+              <div className="flex items-center gap-2">
+                {anomalies.length > 0 ? (
+                  <span className="text-xs font-mono text-[#ff5a24] bg-white/10 px-2.5 py-0.5 rounded-full border border-white/20">
+                    Anomaly Score: <strong>{anomalies[0].anomaly_score}</strong>/100
+                  </span>
+                ) : (
+                  <span className="text-xs font-mono text-emerald-400 bg-emerald-500/10 px-2.5 py-0.5 rounded-full border border-emerald-500/30">
+                    Healthy (Score: 0/100)
+                  </span>
+                )}
+              </div>
             </div>
 
             <div className="mt-5 space-y-3">
-              {equipment.status === "IDLE" && (
-                <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4">
-                  <p className="font-semibold text-white text-sm">
-                    Reassign Asset: High Idle Accumulation
-                  </p>
-                  <p className="text-xs text-white/80 mt-1 leading-relaxed">
-                    This unit has recorded {idleHours} hours of idle time with only {utilPct}% utilization. Reallocating to Highland Medical Center will reduce standby costs by ~${equipment.daily_rate * 3}.
-                  </p>
-                </div>
-              )}
+              {anomalies.length > 0 ? (
+                anomalies.map((anom, idx) => (
+                  <div
+                    key={idx}
+                    className={cn(
+                      "rounded-xl border p-4 space-y-2",
+                      anom.severity === "CRITICAL"
+                        ? "border-red-500/40 bg-red-500/10 text-white"
+                        : anom.severity === "WARNING"
+                        ? "border-amber-500/40 bg-amber-500/10 text-white"
+                        : "border-blue-500/40 bg-blue-500/10 text-white"
+                    )}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-semibold text-sm text-white">
+                        {anom.anomaly_type.replace("_", " ")}
+                      </span>
+                      <span className="text-[10px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-black/40 border border-white/20">
+                        {anom.severity}
+                      </span>
+                    </div>
 
-              {equipment.status === "OVERDUE" && (
-                <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-4">
-                  <p className="font-semibold text-white text-sm">
-                    Action Required: Off-Rent Immediate Handoff
-                  </p>
-                  <p className="text-xs text-white/80 mt-1 leading-relaxed">
-                    Contract has exceeded its scheduled return date. Surcharge penalties are accumulating at ${equipment.daily_rate}/day.
-                  </p>
-                </div>
-              )}
+                    <p className="text-xs text-white/90 leading-relaxed">
+                      {anom.explanation}
+                    </p>
 
-              {equipment.status === "UNASSIGNED" && (
-                <div className="rounded-xl border border-[#ff5a24]/30 bg-[#ff5a24]/10 p-4">
-                  <p className="font-semibold text-white text-sm">
-                    Assign Operator or Return to Depot
-                  </p>
-                  <p className="text-xs text-white/80 mt-1 leading-relaxed">
-                    Asset is deployed on site but lacks certified operator binding. Assign an authorized driver to resume telemetry tracking.
-                  </p>
-                </div>
-              )}
-
-              {(equipment.status === "ACTIVE" || equipment.status === "DUE_SOON") && (
+                    {/* Supporting Signals Grid */}
+                    {Object.keys(anom.supporting_signals).length > 0 && (
+                      <div className="pt-2 border-t border-white/10 grid grid-cols-2 sm:grid-cols-3 gap-2 text-[11px] font-mono text-white/70">
+                        {Object.entries(anom.supporting_signals).map(([k, v]) => (
+                          <div key={k} className="bg-black/20 p-1.5 rounded">
+                            <span className="text-white/50 block text-[9px] uppercase">{k.replace("_", " ")}</span>
+                            <span className="text-white font-semibold">{String(v)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))
+              ) : (
                 <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4">
                   <p className="font-semibold text-white text-sm">
                     Operational Performance Optimal
                   </p>
                   <p className="text-xs text-white/80 mt-1 leading-relaxed">
-                    Equipment is operating within target fuel efficiency and runtime thresholds. No immediate action required.
+                    Asset {equipment.id} is operating within nominal thresholds. No excessive idle, overdue contracts, or allocation anomalies detected.
                   </p>
                 </div>
               )}
@@ -370,7 +425,7 @@ export default function AssetDetailPage() {
           </div>
 
           <div className="mt-6 pt-4 border-t border-white/10 flex items-center justify-between text-xs text-white/70">
-            <span>Model Confidence: 94.8%</span>
+            <span>Deterministic Anomaly Scoring Active</span>
             {hasActiveRental ? (
               <button
                 onClick={() => setCheckinModalOpen(true)}
@@ -388,6 +443,7 @@ export default function AssetDetailPage() {
             )}
           </div>
         </GlassCard>
+
 
         {/* Active Alerts for this asset */}
         <GlassCard variant="light" className="p-7 flex flex-col justify-between">
