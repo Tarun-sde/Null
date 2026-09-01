@@ -22,8 +22,8 @@ export function FleetMapCard({ equipmentList }: FleetMapCardProps) {
     : equipmentList.filter((eq) => eq.site?.id === selectedSiteId);
 
   // Normalization for SVG map canvas representation of the 3 SF Bay locations
-  // Lat range ~ 37.75 to 37.82 -> Y (0 to 100%)
-  // Lng range ~ -122.46 to -122.26 -> X (0 to 100%)
+  // Lat range ~ 37.74 to 37.82 -> Y (0 to 100%)
+  // Lng range ~ -122.48 to -122.25 -> X (0 to 100%)
   const minLat = 37.74;
   const maxLat = 37.82;
   const minLng = -122.48;
@@ -50,7 +50,7 @@ export function FleetMapCard({ equipmentList }: FleetMapCardProps) {
             </h3>
           </div>
           <p className="text-xs text-[#6a6a6a] mt-0.5">
-            Geospatial fleet coordinates &amp; site surveillance grid
+            Realtime telemetry stream &amp; live GPS coordinates
           </p>
         </div>
 
@@ -117,7 +117,7 @@ export function FleetMapCard({ equipmentList }: FleetMapCardProps) {
           );
         })}
 
-        {/* Render Asset Pins */}
+        {/* Render Live Smooth-Transitioning Asset Pins */}
         {filteredAssets.map((asset) => {
           const lat = asset.latest_telemetry?.latitude || (asset.site ? 37.7749 : 37.7610);
           const lng = asset.latest_telemetry?.longitude || (asset.site ? -122.4194 : -122.4480);
@@ -134,7 +134,7 @@ export function FleetMapCard({ equipmentList }: FleetMapCardProps) {
               style={{ left: pos.left, top: pos.top }}
               onMouseEnter={() => setActiveAssetHover(asset)}
               onMouseLeave={() => setActiveAssetHover(null)}
-              className="absolute -translate-x-1/2 -translate-y-1/2 group z-20 transition-transform hover:scale-125"
+              className="absolute -translate-x-1/2 -translate-y-1/2 group z-20 transition-all duration-700 ease-out hover:scale-125"
             >
               <div className="relative flex items-center justify-center">
                 <span
@@ -155,6 +155,9 @@ export function FleetMapCard({ equipmentList }: FleetMapCardProps) {
                     <span>{STATUS_CONFIG[normStatus].label}</span>
                     <span>|</span>
                     <span>{asset.site?.name || "Yard Staging"}</span>
+                  </div>
+                  <div className="mt-1 text-[9px] font-mono text-white/50">
+                    {lat.toFixed(4)}, {lng.toFixed(4)}
                   </div>
                   <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-[#111111]" />
                 </div>

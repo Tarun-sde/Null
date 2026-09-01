@@ -1,15 +1,56 @@
 "use client";
 
 import React from "react";
-import { Menu, Search, Bell, Shield, User } from "lucide-react";
+import { Menu, Search, Bell, Shield, User, Radio, RefreshCw, WifiOff } from "lucide-react";
+import { ConnectionState } from "@/lib/useTelemetryStream";
 import { cn } from "@/lib/utils";
 
 interface TopBarProps {
   onMenuToggle?: () => void;
   openAlertsCount?: number;
+  connectionState?: ConnectionState;
 }
 
-export function TopBar({ onMenuToggle, openAlertsCount = 4 }: TopBarProps) {
+export function TopBar({
+  onMenuToggle,
+  openAlertsCount = 4,
+  connectionState = "LIVE",
+}: TopBarProps) {
+  const getConnectionBadge = () => {
+    switch (connectionState) {
+      case "LIVE":
+        return {
+          dot: "bg-emerald-500 animate-pulse",
+          text: "CONTROL TOWER LIVE",
+          sub: "SSE Stream Active",
+          border: "border-emerald-500/20 bg-emerald-50/60 text-emerald-800",
+        };
+      case "POLLING":
+        return {
+          dot: "bg-blue-500 animate-pulse",
+          text: "STREAM POLLING",
+          sub: "Fallback 6s Cycle",
+          border: "border-blue-500/20 bg-blue-50/60 text-blue-800",
+        };
+      case "RECONNECTING":
+        return {
+          dot: "bg-amber-500 animate-pulse",
+          text: "RECONNECTING",
+          sub: "Syncing Stream",
+          border: "border-amber-500/20 bg-amber-50/60 text-amber-800",
+        };
+      default:
+        return {
+          dot: "bg-red-500",
+          text: "OFFLINE",
+          sub: "Stream Paused",
+          border: "border-red-500/20 bg-red-50/60 text-red-800",
+        };
+    }
+  };
+
+  const badge = getConnectionBadge();
+
   return (
     <header className="sticky top-0 z-30 flex h-20 w-full items-center justify-between px-6 sm:px-10 lg:px-12 bg-white/40 border-b border-black/10 backdrop-blur-xl transition-all">
       {/* Left: Mobile Menu & Live Badge */}
@@ -22,13 +63,19 @@ export function TopBar({ onMenuToggle, openAlertsCount = 4 }: TopBarProps) {
           <Menu className="size-5" />
         </button>
 
-        <div className="hidden sm:flex items-center gap-2.5 rounded-full border border-black/10 bg-white/70 px-3.5 py-1.5 shadow-sm">
-          <span className="size-2 rounded-full bg-[#ff5a24] animate-pulse" />
-          <span className="text-xs font-semibold uppercase tracking-wider text-[#222222]">
-            CONTROL TOWER LIVE
+        {/* Live Stream Indicator Badge */}
+        <div
+          className={cn(
+            "flex items-center gap-2.5 rounded-full border px-3.5 py-1.5 shadow-sm transition-all",
+            badge.border
+          )}
+        >
+          <span className={cn("size-2 rounded-full", badge.dot)} />
+          <span className="text-xs font-semibold uppercase tracking-wider">
+            {badge.text}
           </span>
-          <span className="text-[10px] text-[#7a7a7a] font-mono border-l border-black/10 pl-2">
-            99.9% SLA
+          <span className="hidden sm:inline text-[10px] opacity-75 font-mono border-l border-current/20 pl-2">
+            {badge.sub}
           </span>
         </div>
       </div>
