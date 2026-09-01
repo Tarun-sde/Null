@@ -28,6 +28,7 @@ def list_actions(
     equipment_id: Optional[str] = Query(None, description="Filter by equipment ID"),
     action_type: Optional[str] = Query(None, description="Filter by action type (RETURN, REASSIGN, EXTEND, INVESTIGATE)"),
     priority: Optional[str] = Query(None, description="Filter by priority (CRITICAL, HIGH, MEDIUM, LOW)"),
+    limit: int = Query(100, ge=1, le=500, description="Max actions to retrieve"),
     db: Session = Depends(get_db),
 ):
     """
@@ -43,7 +44,8 @@ def list_actions(
     if priority:
         query = query.filter(Action.priority == priority.upper())
 
-    return query.order_by(Action.created_at.desc()).all()
+    return query.order_by(Action.created_at.desc()).limit(limit).all()
+
 
 
 @router.get("/actions/{action_id}", response_model=ActionResponse)

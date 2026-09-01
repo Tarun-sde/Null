@@ -1,0 +1,82 @@
+services:
+  # PostgreSQL Production Database
+  db:
+    image: postgres:16-alpine
+    container_name: rentsense-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: rentsense_user
+      POSTGRES_PASSWORD: rentsense_secure_password
+      POSTGRES_DB: rentsense_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U rentsense_user -d rentsense_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # FastAPI Backend Service
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: rentsense-backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      ENVIRONMENT: production
+      LOG_LEVEL: INFO
+      DEBUG: "false"
+      DATABASE_URL: postgresql+psycopg://rentsense_user:rentsense_secure_password@db:5432/rentsense_db
+      FRONTEND_URL: http://localhost:3000
+      CORS_ORIGINS: http://localhost:3000,http://127.0.0.1:3000
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+
+  # Next.js Frontend Service
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:8000
+    container_name: rentsense-frontend
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "3000:3000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+
+  # Optional Telemetry Simulator Profile
+  simulator:
+    build:
+      context: ./simulator
+      dockerfile: Dockerfile
+    container_name: rentsense-simulator
+    profiles: ["simulation"]
+    depends_on:
+      backend:
+        condition: service_healthy
+    environment:
+      API_BASE_URL: http://backend:8000
+      INTERVAL_SECONDS: 5
+
+volumes:
+  pgdata:
+    driver: local

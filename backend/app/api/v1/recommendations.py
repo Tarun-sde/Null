@@ -23,6 +23,7 @@ def get_recommendations(
     priority: Optional[str] = Query(None, description="Filter by priority (CRITICAL, HIGH, MEDIUM, LOW)"),
     status: Optional[str] = Query(None, description="Filter by status (PENDING, IN_PROGRESS, COMPLETED)"),
     recommendation_type: Optional[str] = Query(None, description="Filter by type (RETURN, REASSIGN, EXTEND, INVESTIGATE)"),
+    limit: int = Query(50, ge=1, le=200, description="Max recommendations to retrieve"),
     db: Session = Depends(get_db),
 ):
     """
@@ -42,7 +43,8 @@ def get_recommendations(
     if recommendation_type:
         query = query.filter(Recommendation.recommendation_type == recommendation_type.upper())
 
-    return query.order_by(Recommendation.created_at.desc()).all()
+    return query.order_by(Recommendation.created_at.desc()).limit(limit).all()
+
 
 
 @router.get("/equipment/{equipment_id}", response_model=List[RecommendationResponse])
