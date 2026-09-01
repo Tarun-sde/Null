@@ -1,4 +1,14 @@
-import { DashboardKPIs, EquipmentListItem, EquipmentDetail } from "@/types";
+import {
+  DashboardKPIs,
+  EquipmentListItem,
+  EquipmentDetail,
+  CheckoutPayload,
+  CheckoutResponse,
+  CheckinPayload,
+  CheckinResponse,
+  Site,
+  Operator,
+} from "@/types";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -43,6 +53,56 @@ export async function fetchEquipmentDetail(id: string): Promise<EquipmentDetail>
       throw new Error("NOT_FOUND");
     }
     throw new Error(`Failed to fetch equipment detail: ${res.status} ${res.statusText}`);
+  }
+  return res.json();
+}
+
+export async function fetchSites(): Promise<Site[]> {
+  const res = await fetch(`${API_BASE_URL}/api/v1/sites`, {
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    throw new Error(`Failed to fetch sites: ${res.status} ${res.statusText}`);
+  }
+  return res.json();
+}
+
+export async function fetchOperators(): Promise<Operator[]> {
+  const res = await fetch(`${API_BASE_URL}/api/v1/operators`, {
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    throw new Error(`Failed to fetch operators: ${res.status} ${res.statusText}`);
+  }
+  return res.json();
+}
+
+export async function checkoutEquipment(payload: CheckoutPayload): Promise<CheckoutResponse> {
+  const res = await fetch(`${API_BASE_URL}/api/v1/rentals/checkout`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const errorBody = await res.json().catch(() => ({}));
+    throw new Error(errorBody.detail || `Checkout failed: ${res.status} ${res.statusText}`);
+  }
+  return res.json();
+}
+
+export async function checkinEquipment(payload: CheckinPayload): Promise<CheckinResponse> {
+  const res = await fetch(`${API_BASE_URL}/api/v1/rentals/checkin`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const errorBody = await res.json().catch(() => ({}));
+    throw new Error(errorBody.detail || `Check-in failed: ${res.status} ${res.statusText}`);
   }
   return res.json();
 }

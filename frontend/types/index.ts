@@ -100,3 +100,36 @@ export interface DashboardKPIs {
   open_alerts: number;
   fleet_utilization_pct: number;
 }
+
+export interface CheckoutPayload {
+  equipment_id: string;
+  site_id: string;
+  operator_id: string;
+  due_at: string;
+  daily_rate?: number;
+  condition_notes?: string;
+  actor?: string;
+}
+
+export interface CheckoutResponse {
+  success: boolean;
+  equipment_id: string;
+  status: string;
+  rental: Rental;
+  audit_event: AuditEvent;
+}
+
+export interface CheckinPayload {
+  equipment_id: string;
+  condition?: string;
+  notes?: string;
+  actor?: string;
+}
+
+export interface CheckinResponse {
+  success: boolean;
+  equipment_id: string;
+  status: string;
+  rental: Rental;
+  audit_event: AuditEvent;
+}

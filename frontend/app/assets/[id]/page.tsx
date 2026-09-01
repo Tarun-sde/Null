@@ -19,6 +19,8 @@ import {
   History,
   CheckCircle2,
   AlertTriangle,
+  ArrowRight,
+  ShieldCheck,
 } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
 import { GlassCard } from "@/components/ui/GlassCard";
@@ -27,6 +29,8 @@ import { TelemetryChart } from "@/components/assets/TelemetryChart";
 import { MiniMap } from "@/components/assets/MiniMap";
 import { CardSkeleton } from "@/components/ui/SkeletonLoader";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { CheckoutModal } from "@/components/handoff/CheckoutModal";
+import { CheckinModal } from "@/components/handoff/CheckinModal";
 import { fetchEquipmentDetail } from "@/lib/api";
 import { EquipmentDetail, EquipmentStatus } from "@/types";
 import { STATUS_CONFIG } from "@/lib/constants";
@@ -41,21 +45,26 @@ export default function AssetDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
+  // Workflow Modal States
+  const [checkoutModalOpen, setCheckoutModalOpen] = useState(false);
+  const [checkinModalOpen, setCheckinModalOpen] = useState(false);
+
+  const loadDetail = async () => {
     if (!id) return;
-    const loadDetail = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        const data = await fetchEquipmentDetail(id);
-        setEquipment(data);
-      } catch (err: any) {
-        console.error("Error loading asset detail:", err);
-        setError(err.message === "NOT_FOUND" ? "Equipment Not Found" : "Failed to load asset");
-      } finally {
-        setLoading(false);
-      }
-    };
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await fetchEquipmentDetail(id);
+      setEquipment(data);
+    } catch (err: any) {
+      console.error("Error loading asset detail:", err);
+      setError(err.message === "NOT_FOUND" ? "Equipment Not Found" : "Failed to load asset");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
     loadDetail();
   }, [id]);
 
@@ -95,6 +104,10 @@ export default function AssetDetailPage() {
   const idleHours = equipment.latest_telemetry?.idle_hours || 0;
   const fuelPct = equipment.latest_telemetry?.fuel_pct ?? 100;
   const activeHours = Math.max(0, engineHours - idleHours);
+
+  const hasActiveRental = Boolean(
+    equipment.current_rental && !equipment.current_rental.checked_in_at
+  );
 
   return (
     <AppShell>
@@ -136,15 +149,33 @@ export default function AssetDetailPage() {
           </p>
         </div>
 
-        {/* Action Buttons */}
+        {/* Action Buttons connected to Phase 3 Workflows */}
         <div className="flex flex-wrap items-center gap-3">
-          <button className="flex items-center gap-2 rounded-xl border border-black/15 bg-white/70 px-4 py-2.5 text-xs font-medium text-black shadow-sm hover:bg-white transition-all">
+          <Link
+            href="/scan"
+            className="flex items-center gap-2 rounded-xl border border-black/15 bg-white/70 px-4 py-2.5 text-xs font-medium text-black shadow-sm hover:bg-white transition-all"
+          >
             <QrCode className="size-4 text-[#ff5a24]" />
-            <span>Generate Handoff QR</span>
-          </button>
-          <button className="flex items-center gap-2 rounded-xl bg-[#111111] px-5 py-2.5 text-xs font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.15)] hover:bg-black transition-all">
-            <span>Reassign / Return</span>
-          </button>
+            <span>Scan Terminal</span>
+          </Link>
+
+          {hasActiveRental ? (
+            <button
+              onClick={() => setCheckinModalOpen(true)}
+              className="flex items-center gap-2 rounded-xl bg-emerald-700 px-5 py-2.5 text-xs font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.15)] hover:bg-emerald-800 transition-all"
+            >
+              <ShieldCheck className="size-4" />
+              <span>Check In Equipment</span>
+            </button>
+          ) : (
+            <button
+              onClick={() => setCheckoutModalOpen(true)}
+              className="flex items-center gap-2 rounded-xl bg-[#111111] px-5 py-2.5 text-xs font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.15)] hover:bg-black transition-all"
+            >
+              <ArrowRight className="size-4 text-[#ff5a24]" />
+              <span>Check Out (Dispatch)</span>
+            </button>
+          )}
         </div>
       </section>
 
@@ -340,9 +371,21 @@ export default function AssetDetailPage() {
 
           <div className="mt-6 pt-4 border-t border-white/10 flex items-center justify-between text-xs text-white/70">
             <span>Model Confidence: 94.8%</span>
-            <button className="rounded-lg bg-[#ff5a24] px-4 py-2 text-xs font-semibold text-white hover:bg-[#ff6330] transition-colors">
-              Execute Optimization Action
-            </button>
+            {hasActiveRental ? (
+              <button
+                onClick={() => setCheckinModalOpen(true)}
+                className="rounded-lg bg-[#ff5a24] px-4 py-2 text-xs font-semibold text-white hover:bg-[#ff6330] transition-colors"
+              >
+                Check In &amp; Return
+              </button>
+            ) : (
+              <button
+                onClick={() => setCheckoutModalOpen(true)}
+                className="rounded-lg bg-[#ff5a24] px-4 py-2 text-xs font-semibold text-white hover:bg-[#ff6330] transition-colors"
+              >
+                Dispatch to Site
+              </button>
+            )}
           </div>
         </GlassCard>
 
@@ -471,6 +514,33 @@ export default function AssetDetailPage() {
           </div>
         </GlassCard>
       </section>
+
+      {/* Checkout Modal */}
+      <CheckoutModal
+        isOpen={checkoutModalOpen}
+        onClose={() => setCheckoutModalOpen(false)}
+        equipmentId={equipment.id}
+        equipmentType={equipment.type}
+        dailyRate={equipment.daily_rate}
+        dealer={equipment.dealer}
+        onSuccess={() => {
+          loadDetail();
+        }}
+      />
+
+      {/* Checkin Modal */}
+      <CheckinModal
+        isOpen={checkinModalOpen}
+        onClose={() => setCheckinModalOpen(false)}
+        equipmentId={equipment.id}
+        equipmentType={equipment.type}
+        currentSiteName={equipment.site?.name}
+        currentOperatorName={equipment.operator?.name}
+        currentStatus={equipment.status}
+        onSuccess={() => {
+          loadDetail();
+        }}
+      />
     </AppShell>
   );
 }
