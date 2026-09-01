@@ -1,93 +1,165 @@
-import { Radio, Activity, CheckCircle2, Terminal } from "lucide-react";
+"use client";
 
-export default function Home() {
+import React, { useEffect, useState } from "react";
+import { AppShell } from "@/components/layout/AppShell";
+import { HeroOverview } from "@/components/dashboard/HeroOverview";
+import { MetricCard } from "@/components/ui/MetricCard";
+import { FleetStatusDonut } from "@/components/dashboard/FleetStatusDonut";
+import { FleetMapCard } from "@/components/dashboard/FleetMapCard";
+import { AlertsPanel } from "@/components/dashboard/AlertsPanel";
+import { RecommendationsPanel } from "@/components/dashboard/RecommendationsPanel";
+import { ActivityTimeline } from "@/components/dashboard/ActivityTimeline";
+import { EquipmentTable } from "@/components/dashboard/EquipmentTable";
+import { CardSkeleton, TableSkeleton } from "@/components/ui/SkeletonLoader";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { fetchDashboardKPIs, fetchEquipmentList } from "@/lib/api";
+import { DashboardKPIs, EquipmentListItem } from "@/types";
+
+export default function DashboardPage() {
+  const [kpis, setKpis] = useState<DashboardKPIs | null>(null);
+  const [equipmentList, setEquipmentList] = useState<EquipmentListItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const [kpiRes, eqRes] = await Promise.all([
+        fetchDashboardKPIs(),
+        fetchEquipmentList(),
+      ]);
+      setKpis(kpiRes);
+      setEquipmentList(eqRes);
+    } catch (err: any) {
+      console.error("Dashboard data load error:", err);
+      setError(err.message || "Failed to load fleet data");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
   return (
-    <main className="relative min-h-screen w-full overflow-hidden flex flex-col justify-between p-6 sm:p-10 lg:p-16">
-      {/* Header */}
-      <header className="flex w-full items-center justify-between z-10">
-        <div className="flex items-center gap-3">
-          <span className="size-3 bg-[#ff5a24] shadow-[0_0_0_1px_rgba(255,90,36,0.18)]" />
-          <span className="text-2xl font-medium tracking-[0.22em] text-black">
-            RENTSENSE
-          </span>
+    <AppShell openAlertsCount={kpis?.open_alerts ?? 4}>
+      {/* Hero Overview */}
+      <HeroOverview
+        fleetUtilizationPct={kpis?.fleet_utilization_pct ?? 63.2}
+        totalAssets={kpis?.total_equipment ?? equipmentList.length}
+        activeAssets={kpis?.active ?? 2}
+      />
+
+      {/* KPI Cards Grid */}
+      <section className="mb-10">
+        {loading ? (
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-5">
+            {[...Array(5)].map((_, i) => (
+              <CardSkeleton key={i} />
+            ))}
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-5">
+            <MetricCard
+              title="Active Fleet"
+              value={kpis?.active ?? 2}
+              subtext="Under active rental contract"
+              trend="In Production"
+              trendPositive={true}
+              sparklineColor="#16a34a"
+              statusDotColor="bg-emerald-500"
+            />
+            <MetricCard
+              title="Idle Units"
+              value={kpis?.idle ?? 1}
+              subtext="High idle hours (>8h)"
+              trend="Requires Action"
+              trendPositive={false}
+              sparklineColor="#eab308"
+              statusDotColor="bg-amber-500"
+            />
+            <MetricCard
+              title="Due Soon"
+              value={kpis?.due_soon ?? 1}
+              subtext="Expiring within 48 hours"
+              trend="Expiring"
+              trendPositive={false}
+              sparklineColor="#ff5a24"
+              statusDotColor="bg-[#ff5a24]"
+            />
+            <MetricCard
+              title="Overdue"
+              value={kpis?.overdue ?? 1}
+              subtext="Surcharge accumulating"
+              trend="Critical Surcharge"
+              trendPositive={false}
+              sparklineColor="#dc2626"
+              statusDotColor="bg-red-600"
+            />
+            <MetricCard
+              title="Unassigned"
+              value={kpis?.unassigned ?? 2}
+              subtext="Missing operator or yard"
+              trend="Off-Rent"
+              trendPositive={true}
+              sparklineColor="#64748b"
+              statusDotColor="bg-slate-400"
+            />
+          </div>
+        )}
+      </section>
+
+      {/* Center Section: Donut + Tactical Map */}
+      <section className="mb-10 grid lg:grid-cols-3 gap-8 items-stretch">
+        <div className="lg:col-span-1">
+          <FleetStatusDonut
+            statusCounts={
+              kpis?.status_counts || {
+                ACTIVE: 2,
+                IDLE: 1,
+                DUE_SOON: 1,
+                OVERDUE: 1,
+                UNASSIGNED: 2,
+              }
+            }
+            totalEquipment={kpis?.total_equipment || 7}
+          />
         </div>
-        <div className="flex items-center gap-3 rounded-full border border-black/10 bg-white/60 px-4 py-1.5 backdrop-blur shadow-sm">
-          <span className="size-2 rounded-full bg-[#ff5a24] animate-pulse" />
-          <span className="text-xs font-medium tracking-wide uppercase text-[#222222]">
-            Control Tower — Phase 0 Ready
-          </span>
-        </div>
-      </header>
-
-      {/* Center Hero Card */}
-      <section className="my-auto mx-auto w-full max-w-4xl z-10 py-12">
-        <div className="relative overflow-hidden rounded-[2rem] border border-black/15 bg-white/40 p-8 sm:p-12 shadow-[0_32px_80px_rgba(0,0,0,0.08),inset_0_1px_0_rgba(255,255,255,0.72)] backdrop-blur-sm">
-          {/* Subtle Accent Corner */}
-          <div className="absolute right-6 top-6 h-12 w-12 border-r border-t border-black/15" />
-          <div className="absolute bottom-6 left-6 h-12 w-12 border-b border-l border-black/15" />
-
-          <div className="flex items-center gap-3 text-xs font-medium uppercase tracking-wide text-[#222222] mb-6">
-            <span className="size-2.5 bg-[#ff5a24]" />
-            <span>FLEET INTELLIGENCE &amp; RENTAL TRACKING</span>
-          </div>
-
-          <h1
-            className="text-4xl sm:text-5xl lg:text-6xl font-medium leading-[1.05] tracking-tight text-black"
-            style={{ fontFamily: "var(--font-playfair), Georgia, serif" }}
-          >
-            RentSense{" "}
-            <span className="italic text-[#ff5a24]">Control Tower</span>
-          </h1>
-
-          <p className="mt-6 max-w-2xl text-lg sm:text-xl font-normal leading-snug text-[#252525]">
-            Autonomous rental tracking and fleet intelligence system for construction and heavy equipment operations.
-          </p>
-
-          <div className="mt-10 grid gap-4 sm:grid-cols-3">
-            <div className="rounded-xl border border-black/10 bg-white/80 p-5 shadow-sm">
-              <div className="flex items-center justify-between text-xs text-[#6a6a6a] uppercase font-medium">
-                <span>Frontend Status</span>
-                <CheckCircle2 className="size-4 text-[#ff5a24]" />
-              </div>
-              <p className="mt-3 text-2xl font-semibold text-black">Next.js App</p>
-              <p className="mt-1 text-xs text-[#7a7a7a]">TypeScript &amp; Tailwind</p>
-            </div>
-
-            <div className="rounded-xl border border-black/10 bg-white/80 p-5 shadow-sm">
-              <div className="flex items-center justify-between text-xs text-[#6a6a6a] uppercase font-medium">
-                <span>Backend Status</span>
-                <Radio className="size-4 text-[#ff5a24] animate-pulse" />
-              </div>
-              <p className="mt-3 text-2xl font-semibold text-black">FastAPI</p>
-              <p className="mt-1 text-xs text-[#7a7a7a]">Python &amp; Uvicorn</p>
-            </div>
-
-            <div className="rounded-xl border border-black/10 bg-white/80 p-5 shadow-sm">
-              <div className="flex items-center justify-between text-xs text-[#6a6a6a] uppercase font-medium">
-                <span>Phase Status</span>
-                <Activity className="size-4 text-[#ff5a24]" />
-              </div>
-              <p className="mt-3 text-2xl font-semibold text-black">Phase 0</p>
-              <p className="mt-1 text-xs text-[#7a7a7a]">Foundation Established</p>
-            </div>
-          </div>
-
-          <div className="mt-8 flex flex-col sm:flex-row items-center gap-4">
-            <div className="flex items-center gap-3 rounded-lg border border-black/15 bg-[#111111] px-6 py-3.5 text-sm font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.14)]">
-              <Terminal className="size-4 text-[#ff5a24]" />
-              <span>Ready for Phase 1 Data Models &amp; Core APIs</span>
-            </div>
-          </div>
+        <div className="lg:col-span-2">
+          <FleetMapCard equipmentList={equipmentList} />
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="flex flex-col sm:flex-row items-center justify-between text-xs text-[#6a6a6a] z-10 pt-6 border-t border-black/10">
-        <p>&copy; {new Date().getFullYear()} RentSense Control Tower. Operational Elegance Architecture.</p>
-        <div className="flex items-center gap-6 mt-4 sm:mt-0">
-          <span>Target Stack: Next.js + FastAPI + PostgreSQL</span>
+      {/* Triad Intelligence Section: Alerts + Recommendations + Timeline */}
+      <section className="mb-10 grid md:grid-cols-2 lg:grid-cols-3 gap-8 items-stretch">
+        <div>
+          <AlertsPanel />
         </div>
-      </footer>
-    </main>
+        <div>
+          <RecommendationsPanel />
+        </div>
+        <div>
+          <ActivityTimeline />
+        </div>
+      </section>
+
+      {/* Fleet Ledger Table */}
+      <section className="mb-12">
+        {loading ? (
+          <TableSkeleton />
+        ) : error ? (
+          <EmptyState
+            title="Unable to Load Equipment Ledger"
+            description="The connection to the RentSense backend API failed. Ensure the server is running on http://localhost:8000."
+            actionText="Retry Connection"
+            onAction={loadData}
+          />
+        ) : (
+          <EquipmentTable equipmentList={equipmentList} />
+        )}
+      </section>
+    </AppShell>
   );
 }
