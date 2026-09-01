@@ -1,33 +1,32 @@
-import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from dotenv import load_dotenv
-
-load_dotenv()
+from app.core.config import settings
+from app.api.v1.router import api_v1_router
 
 app = FastAPI(
-    title="RentSense Control Tower API",
+    title=settings.PROJECT_NAME,
     description="Smart rental tracking and fleet intelligence system for construction/heavy equipment",
-    version="0.1.0",
+    version=settings.VERSION,
 )
 
 # CORS configuration
-cors_origins_str = os.getenv("CORS_ORIGINS", "http://localhost:3000")
-origins = [origin.strip() for origin in cors_origins_str.split(",") if origin.strip()]
-
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins if origins else ["*"],
+    allow_origins=settings.cors_origin_list if settings.cors_origin_list else ["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-
+# Root health check endpoint
 @app.get("/health")
 def health_check():
     """Health check endpoint confirming API status."""
     return {"status": "ok"}
+
+
+# Include v1 API routes
+app.include_router(api_v1_router)
 
 
 if __name__ == "__main__":
