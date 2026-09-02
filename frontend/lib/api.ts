@@ -10,7 +10,7 @@ import {
   Operator,
 } from "@/types";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "";
 
 export async function fetchDashboardKPIs(): Promise<DashboardKPIs> {
   const res = await fetch(`${API_BASE_URL}/api/v1/dashboard`, {
@@ -80,9 +80,8 @@ export async function fetchOperators(): Promise<Operator[]> {
 export async function checkoutEquipment(payload: CheckoutPayload): Promise<CheckoutResponse> {
   const res = await fetch(`${API_BASE_URL}/api/v1/rentals/checkout`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
     body: JSON.stringify(payload),
   });
   if (!res.ok) {
@@ -95,9 +94,8 @@ export async function checkoutEquipment(payload: CheckoutPayload): Promise<Check
 export async function checkinEquipment(payload: CheckinPayload): Promise<CheckinResponse> {
   const res = await fetch(`${API_BASE_URL}/api/v1/rentals/checkin`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
     body: JSON.stringify(payload),
   });
   if (!res.ok) {
@@ -198,7 +196,7 @@ export async function fetchForecastSummary(params?: {
 }
 
 // ==========================================
-// Phase 6: Recommendations, Actions & Impact
+// Recommendations, Actions & Impact
 // ==========================================
 
 export async function fetchRecommendations(params?: {
@@ -237,12 +235,13 @@ export async function triggerActionFromRecommendation(
     action_type?: string;
     notes?: string;
     actor?: string;
-    payload?: Record<string, any>;
+    payload?: Record<string, unknown>;
   }
 ): Promise<import("@/types").Action> {
   const res = await fetch(`${API_BASE_URL}/api/v1/recommendations/${recId}/action`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
+    credentials: "include",
     body: JSON.stringify(data || {}),
   });
   if (!res.ok) {
@@ -288,11 +287,12 @@ export async function createAction(data: {
   priority?: string;
   notes?: string;
   actor?: string;
-  payload?: Record<string, any>;
+  payload?: Record<string, unknown>;
 }): Promise<import("@/types").Action> {
   const res = await fetch(`${API_BASE_URL}/api/v1/actions`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
+    credentials: "include",
     body: JSON.stringify(data),
   });
   if (!res.ok) {
@@ -307,12 +307,13 @@ export async function completeAction(
   data?: {
     notes?: string;
     actor?: string;
-    payload?: Record<string, any>;
+    payload?: Record<string, unknown>;
   }
 ): Promise<import("@/types").Action> {
   const res = await fetch(`${API_BASE_URL}/api/v1/actions/${id}/complete`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
+    credentials: "include",
     body: JSON.stringify(data || {}),
   });
   if (!res.ok) {
@@ -332,6 +333,7 @@ export async function cancelAction(
   const res = await fetch(`${API_BASE_URL}/api/v1/actions/${id}/cancel`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
+    credentials: "include",
     body: JSON.stringify(data || {}),
   });
   if (!res.ok) {
@@ -351,6 +353,7 @@ export async function resolveAlert(
   const res = await fetch(`${API_BASE_URL}/api/v1/alerts/${id}/resolve`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
+    credentials: "include",
     body: JSON.stringify(data || {}),
   });
   if (!res.ok) {
@@ -379,5 +382,130 @@ export async function fetchActionImpactDetail(actionId: number): Promise<import(
   }
   return res.json();
 }
+export async function createEquipment(payload: {
+  id: string;
+  type: string;
+  dealer: string;
+  daily_rate: number;
+  model?: string;
+  serial?: string;
+}): Promise<import("@/types").EquipmentDetail> {
+  const res = await fetch(`${API_BASE_URL}/api/v1/equipment`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || err.message || `Failed to create equipment: ${res.status}`);
+  }
+  return res.json();
+}
 
+export interface ChatMessageHistoryItem {
+  role: "user" | "assistant" | "model";
+  content: string;
+}
 
+export interface ChatResponse {
+  reply: string;
+  is_configured: boolean;
+  grounded: boolean;
+  model?: string;
+  timestamp: string;
+}
+
+export async function sendChatMessage(
+  message: string,
+  history?: ChatMessageHistoryItem[]
+): Promise<ChatResponse> {
+  const res = await fetch(`${API_BASE_URL}/api/v1/chat`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ message, history }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || err.message || `Chat request failed: ${res.status}`);
+  }
+  return res.json();
+}
+
+export async function streamChatMessage(
+  message: string,
+  history: ChatMessageHistoryItem[] | undefined,
+  callbacks: {
+    onChunk: (text: string) => void;
+    onStage?: (stageText: string) => void;
+    onDone: (meta: { is_configured: boolean; grounded: boolean; model?: string }) => void;
+    onError: (errMessage: string) => void;
+  }
+): Promise<void> {
+  try {
+    const res = await fetch(`${API_BASE_URL}/api/v1/chat/stream`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message, history }),
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      callbacks.onError(err.detail || err.message || `Streaming request failed: ${res.status}`);
+      return;
+    }
+
+    if (!res.body) {
+      callbacks.onError("No streaming response body received.");
+      return;
+    }
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split("\n");
+      buffer = lines.pop() || "";
+
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (trimmed.startsWith("data: ")) {
+          try {
+            const data = JSON.parse(trimmed.slice(6));
+            if (data.type === "stage" && callbacks.onStage) {
+              callbacks.onStage(data.text);
+            } else if (data.type === "chunk") {
+              callbacks.onChunk(data.text);
+            } else if (data.type === "done") {
+              callbacks.onDone({
+                is_configured: data.is_configured ?? true,
+                grounded: data.grounded ?? true,
+                model: data.model,
+              });
+            } else if (data.type === "error") {
+              callbacks.onError(data.reply || "Gemini service encountered an issue.");
+            }
+          } catch {
+            // Ignore unparsed stream chunks
+          }
+        }
+      }
+    }
+  } catch (err: unknown) {
+    const errMsg = err instanceof Error ? err.message : "Failed to connect to streaming chat.";
+    callbacks.onError(errMsg);
+  }
+}
+
+export async function fetchChatStatus(): Promise<{ is_configured: boolean; model: string }> {
+  const res = await fetch(`${API_BASE_URL}/api/v1/chat/status`, { cache: "no-store" });
+  if (!res.ok) {
+    return { is_configured: false, model: "gemini-3.6-flash" };
+  }
+  return res.json();
+}

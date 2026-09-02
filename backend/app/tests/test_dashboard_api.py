@@ -37,5 +37,5 @@ def test_dashboard_kpis():
     assert total_status == 7
 
     assert "status_counts" in data
-    assert data["open_alerts"] == 4
+    assert data["open_alerts"] == 6
     assert data["fleet_utilization_pct"] > 0

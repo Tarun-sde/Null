@@ -1,17 +1,17 @@
 import React from "react";
 import Link from "next/link";
-import { ArrowUpRight, Fuel, Gauge, MapPin, User, Clock } from "lucide-react";
+import { ArrowUpRight, Fuel, Gauge, MapPin, User } from "lucide-react";
 import { GlassCard } from "../ui/GlassCard";
 import { StatusBadge } from "../ui/StatusBadge";
 import { EquipmentListItem } from "@/types";
-import { cn } from "@/lib/utils";
+import { cn, formatDayRate } from "@/lib/utils";
 
 interface AssetCardProps {
   equipment: EquipmentListItem;
 }
 
 export function AssetCard({ equipment }: AssetCardProps) {
-  const model = (equipment.metadata_json as any)?.model || "Standard Heavy Spec";
+  const model = (equipment.metadata_json as { model?: string } | null)?.model || "Standard Heavy Spec";
   const utilPct = Math.round(equipment.utilization_rate * 100);
   const engineHours = equipment.latest_telemetry?.engine_hours || 0;
   const idleHours = equipment.latest_telemetry?.idle_hours || 0;
@@ -26,7 +26,7 @@ export function AssetCard({ equipment }: AssetCardProps) {
             <div className="flex items-center gap-2">
               <span className="font-bold text-lg text-black">{equipment.id}</span>
               <span className="text-xs font-semibold text-[#7a7a7a]">
-                ${equipment.daily_rate}/day
+                {formatDayRate(equipment.daily_rate)}
               </span>
             </div>
             <h4 className="text-sm font-semibold text-black mt-0.5">{equipment.type}</h4>

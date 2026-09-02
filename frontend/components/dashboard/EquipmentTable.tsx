@@ -2,11 +2,11 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { Search, Filter, ArrowUpRight, Truck, Fuel, ChevronRight } from "lucide-react";
+import { Search, Truck, ChevronRight } from "lucide-react";
 import { GlassCard } from "../ui/GlassCard";
 import { StatusBadge } from "../ui/StatusBadge";
-import { EquipmentListItem, EquipmentStatus } from "@/types";
-import { cn } from "@/lib/utils";
+import { EquipmentListItem } from "@/types";
+import { cn, formatDayRate } from "@/lib/utils";
 
 interface EquipmentTableProps {
   equipmentList: EquipmentListItem[];
@@ -95,7 +95,7 @@ export function EquipmentTable({ equipmentList }: EquipmentTableProps) {
           {/* Table Body */}
           <tbody className="divide-y divide-black/5">
             {filteredList.map((eq) => {
-              const model = (eq.metadata_json as any)?.model || "Standard Spec";
+              const model = (eq.metadata_json as { model?: string } | null)?.model || "Standard Spec";
               const utilPct = Math.round(eq.utilization_rate * 100);
               const fuelPct = eq.latest_telemetry?.fuel_pct ?? 100;
 
@@ -154,7 +154,7 @@ export function EquipmentTable({ equipmentList }: EquipmentTableProps) {
 
                   {/* Daily Rate */}
                   <td className="py-3.5 px-3 font-mono font-semibold text-black">
-                    ${eq.daily_rate}/d
+                    {formatDayRate(eq.daily_rate, "/d")}
                   </td>
 
                   {/* Utilization & Fuel */}

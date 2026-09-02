@@ -13,6 +13,7 @@ from app.analytics.recommendation_engine import (
 )
 from app.services.action_service import create_action
 from app.services.equipment_service import get_current_rental
+from app.core.security import get_current_user
 
 router = APIRouter(prefix="/recommendations", tags=["Recommendations"])
 
@@ -69,6 +70,7 @@ def trigger_action_from_recommendation(
     recommendation_id: int,
     req: RecommendationActionRequest,
     db: Session = Depends(get_db),
+    _current_user=Depends(get_current_user),
 ):
     """
     Initiate an operational action directly from a recommendation.

@@ -51,7 +51,7 @@ def calculate_idle_reassignment_impact(daily_rate: float, idle_hours: float) -> 
         "estimated_savings_usd": avoided_cost,
         "daily_rate": daily_rate,
         "avoidable_days": estimated_days,
-        "calculation_basis": f"{estimated_days:.1f} avoidable idle days × ${daily_rate:.2f}/day rate = ${avoided_cost:.2f}",
+        "calculation_basis": f"{estimated_days:.1f} avoidable idle days × ₹{daily_rate:,.2f}/day rate = ₹{avoided_cost:,.2f}",
     }
 
 
@@ -64,7 +64,7 @@ def calculate_overdue_return_impact(daily_rate: float, overdue_hours: float) -> 
         "estimated_savings_usd": avoided_surcharge,
         "daily_rate": daily_rate,
         "days_overdue": days_overdue,
-        "calculation_basis": f"{days_overdue:.1f} overdue days × ${daily_rate:.2f}/day surcharge = ${avoided_surcharge:.2f}",
+        "calculation_basis": f"{days_overdue:.1f} overdue days × ₹{daily_rate:,.2f}/day surcharge = ₹{avoided_surcharge:,.2f}",
     }
 
 
@@ -85,7 +85,7 @@ def evaluate_equipment_recommendations(
     )
 
     recommendations: List[RecommendationResult] = []
-    daily_rate = float(equipment.daily_rate or 350.0)
+    daily_rate = float(equipment.daily_rate or 18500.0)
 
     # 1. Evaluate OVERDUE Anomaly -> Recommend RETURN or EXTEND
     overdue_anom = next((a for a in active_anomalies if a.anomaly_type == "OVERDUE"), None)
@@ -95,7 +95,7 @@ def evaluate_equipment_recommendations(
         
         explanation = (
             f"Asset {equipment.id} is {overdue_hours:.1f} hours overdue under Contract #{current_rental.id if current_rental else 'N/A'}. "
-            f"Initiating an off-rent return will immediately eliminate ongoing ${daily_rate:.2f}/day surcharge penalties."
+            f"Initiating an off-rent return will immediately eliminate ongoing ₹{daily_rate:,.2f}/day surcharge penalties."
         )
         recommendations.append(
             RecommendationResult(
@@ -103,7 +103,7 @@ def evaluate_equipment_recommendations(
                 recommendation_type="RETURN",
                 priority="CRITICAL",
                 explanation=explanation,
-                action=f"Initiate off-rent check-in to eliminate ${daily_rate:.2f}/day surcharge",
+                action=f"Initiate off-rent check-in to eliminate ₹{daily_rate:,.2f}/day surcharge",
                 confidence=0.95,
                 estimated_impact=impact,
                 supporting_signals=overdue_anom.supporting_signals,
@@ -119,17 +119,17 @@ def evaluate_equipment_recommendations(
         util_rate = float(idle_anom.supporting_signals.get("utilization_rate", 0.10))
         impact = calculate_idle_reassignment_impact(daily_rate, idle_hours)
 
-        # Suggest high-demand destination site (e.g. SITE-003 Highland Medical if currently at SITE-001)
+        # Suggest high-demand destination site (e.g. SITE-003 Kallambella if currently at SITE-001)
         current_site_id = current_rental.site_id if current_rental else None
         target_site_id = "SITE-003" if current_site_id != "SITE-003" else "SITE-002"
-        target_site_name = "Highland Medical Center" if target_site_id == "SITE-003" else "Northside Logistics Hub"
+        target_site_name = "Kallambella Wind Energy Corridor" if target_site_id == "SITE-003" else "Navi Mumbai International Airport"
 
-        priority = "CRITICAL" if daily_rate >= 600 or idle_hours >= 14.0 else "HIGH"
+        priority = "CRITICAL" if daily_rate >= 24000 or idle_hours >= 14.0 else "HIGH"
         
         explanation = (
             f"{equipment.id} has remained rented while recording {idle_hours:.1f}h idle time "
             f"and only {util_rate * 100:.1f}% utilization. Reassigning the asset to {target_site_name} "
-            f"will eliminate standby costs, saving an estimated ${impact['estimated_savings_usd']:.2f}."
+            f"will eliminate standby costs, saving an estimated ₹{impact['estimated_savings_usd']:,.2f}."
         )
         
         recommendations.append(
@@ -152,7 +152,7 @@ def evaluate_equipment_recommendations(
     # 3. Evaluate MISSING_ASSIGNMENT -> Recommend INVESTIGATE / ASSIGN
     missing_anom = next((a for a in active_anomalies if a.anomaly_type == "MISSING_ASSIGNMENT"), None)
     if missing_anom:
-        site_name = current_rental.site.name if current_rental and current_rental.site else "Terminal B Logistics"
+        site_name = current_rental.site.name if current_rental and current_rental.site else "Navi Mumbai Logistics Staging"
         explanation = (
             f"Asset {equipment.id} is deployed at {site_name} without an assigned certified operator. "
             f"Assigning an authorized driver will unlock scheduled site operations."
@@ -169,7 +169,7 @@ def evaluate_equipment_recommendations(
                     "impact_type": "UTILIZATION_RECOVERY",
                     "estimated_savings_usd": round(daily_rate * 2.0, 2),
                     "daily_rate": daily_rate,
-                    "calculation_basis": f"2 days deployment recovery × ${daily_rate:.2f}/day = ${daily_rate * 2.0:.2f}",
+                    "calculation_basis": f"2 days deployment recovery × ₹{daily_rate:,.2f}/day = ₹{daily_rate * 2.0:,.2f}",
                 },
                 supporting_signals=missing_anom.supporting_signals,
                 status="PENDING",
@@ -196,7 +196,7 @@ def evaluate_equipment_recommendations(
                     "impact_type": "STANDBY_PREVENTION",
                     "estimated_savings_usd": round(daily_rate * 1.5, 2),
                     "daily_rate": daily_rate,
-                    "calculation_basis": f"1.5 days standby prevention × ${daily_rate:.2f}/day = ${daily_rate * 1.5:.2f}",
+                    "calculation_basis": f"1.5 days standby prevention × ₹{daily_rate:,.2f}/day = ₹{daily_rate * 1.5:,.2f}",
                 },
                 supporting_signals=zero_anom.supporting_signals,
                 status="PENDING",

@@ -1,19 +1,11 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import {
   DollarSign,
-  TrendingUp,
-  ShieldCheck,
   Building2,
-  Calendar,
-  Layers,
-  Sparkles,
-  Info,
-  CheckCircle2,
   ArrowUpRight,
-  Filter,
 } from "lucide-react";
 import {
   ResponsiveContainer,
@@ -23,10 +15,6 @@ import {
   YAxis,
   Tooltip,
   CartesianGrid,
-  Legend,
-  PieChart,
-  Pie,
-  Cell,
 } from "recharts";
 import { AppShell } from "@/components/layout/AppShell";
 import { GlassCard } from "@/components/ui/GlassCard";
@@ -34,18 +22,16 @@ import { MetricCard } from "@/components/ui/MetricCard";
 import { TableSkeleton } from "@/components/ui/SkeletonLoader";
 import { fetchImpactSummary, fetchSites } from "@/lib/api";
 import { ImpactSummary, Site } from "@/types";
-import { cn } from "@/lib/utils";
-
-const COLORS = ["#ff5a24", "#111111", "#2563eb", "#10b981", "#8b5cf6", "#f59e0b"];
+import { cn, getErrorMessage, formatCurrency } from "@/lib/utils";
 
 export default function ImpactPage() {
   const [summary, setSummary] = useState<ImpactSummary | null>(null);
   const [sites, setSites] = useState<Site[]>([]);
   const [selectedSiteId, setSelectedSiteId] = useState<string>("ALL");
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [, setError] = useState<string | null>(null);
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -55,17 +41,17 @@ export default function ImpactPage() {
       ]);
       setSummary(sumData);
       setSites(sitesData);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Error loading impact summary:", err);
-      setError(err.message || "Failed to load financial impact data");
+      setError(getErrorMessage(err, "Failed to load financial impact data"));
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedSiteId]);
 
   useEffect(() => {
-    loadData();
-  }, [selectedSiteId]);
+    queueMicrotask(() => void loadData());
+  }, [loadData]);
 
   const totalRealized = summary?.total_realized_savings || 0;
   const totalEstimated = summary?.total_estimated_impact || 0;
@@ -107,15 +93,15 @@ export default function ImpactPage() {
 
         <div className="flex items-center gap-2 rounded-xl border border-black/10 bg-white/70 px-3.5 py-2 shadow-sm text-xs font-mono">
           <DollarSign className="size-4 text-[#ff5a24]" />
-          <span className="text-black font-semibold">Realized: ${totalRealized.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+          <span className="text-black font-semibold">Realized: {formatCurrency(totalRealized, { showDecimals: true })}</span>
         </div>
       </section>
 
       {/* KPI Cards */}
-      <section className="grid grid-cols-2 lg:grid-cols-4 gap-5 mb-10">
+      <section className="grid grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-5 mb-10">
         <MetricCard
           title="Total Realized Savings"
-          value={`$${totalRealized.toLocaleString(undefined, { minimumFractionDigits: 0 })}`}
+          value={formatCurrency(totalRealized)}
           subtext="Verified from completed actions"
           trend="Realized ROI"
           trendPositive={true}
@@ -124,7 +110,7 @@ export default function ImpactPage() {
         />
         <MetricCard
           title="Total Estimated Impact"
-          value={`$${totalEstimated.toLocaleString(undefined, { minimumFractionDigits: 0 })}`}
+          value={formatCurrency(totalEstimated)}
           subtext="Potential savings from open recs"
           trend="Projected"
           trendPositive={true}
@@ -142,7 +128,7 @@ export default function ImpactPage() {
         />
         <MetricCard
           title="Avg Savings / Action"
-          value={`$${avgSavingsPerAction.toLocaleString()}`}
+          value={formatCurrency(avgSavingsPerAction)}
           subtext="Per operational resolution"
           trend="High Efficiency"
           trendPositive={true}
@@ -198,7 +184,7 @@ export default function ImpactPage() {
               </p>
             </div>
             <span className="text-xs font-mono text-[#ff5a24] bg-white px-2.5 py-1 rounded-full border border-black/10">
-              USD
+              INR
             </span>
           </div>
 
@@ -214,7 +200,7 @@ export default function ImpactPage() {
                   <XAxis dataKey="name" stroke="#888" fontSize={11} />
                   <YAxis stroke="#888" fontSize={11} />
                   <Tooltip
-                    formatter={(val: any) => [`$${Number(val).toLocaleString()}`, "Savings"]}
+                    formatter={(val) => [formatCurrency(Number(val)), "Savings"]}
                     contentStyle={{
                       backgroundColor: "#111111",
                       borderRadius: "12px",
@@ -258,7 +244,7 @@ export default function ImpactPage() {
                   <XAxis dataKey="name" stroke="#888" fontSize={10} />
                   <YAxis stroke="#888" fontSize={11} />
                   <Tooltip
-                    formatter={(val: any) => [`$${Number(val).toLocaleString()}`, "Savings"]}
+                    formatter={(val) => [formatCurrency(Number(val)), "Savings"]}
                     contentStyle={{
                       backgroundColor: "#111111",
                       borderRadius: "12px",
@@ -284,7 +270,7 @@ export default function ImpactPage() {
                 Realized Savings Audit Ledger
               </h3>
               <p className="text-xs text-[#7a7a7a] mt-0.5">
-                Deterministic calculation basis for every dollar of claimed ROI
+                Deterministic calculation basis for every rupee of claimed ROI
               </p>
             </div>
             <span className="text-xs font-mono text-[#7a7a7a]">
@@ -336,7 +322,7 @@ export default function ImpactPage() {
                         </span>
                       </td>
                       <td className="py-3.5 text-right font-mono font-bold text-emerald-600 text-sm">
-                        +${rec.realized_amount.toFixed(2)}
+                        +{formatCurrency(rec.realized_amount, { showDecimals: true })}
                       </td>
                       <td className="py-3.5 pl-4 text-[#555] leading-snug max-w-md font-mono text-[11px]">
                         {rec.calculation_basis}

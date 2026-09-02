@@ -1,3 +1,4 @@
+export type JsonObject = Record<string, unknown>;
 export type EquipmentStatus = "ACTIVE" | "IDLE" | "DUE_SOON" | "OVERDUE" | "UNASSIGNED";
 
 export interface Site {
@@ -63,7 +64,7 @@ export interface Alert {
   severity: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL" | string;
   message: string;
   status: "OPEN" | "RESOLVED" | "ACKNOWLEDGED" | string;
-  metadata_json?: Record<string, any> | null;
+  metadata_json?: JsonObject | null;
   action_label?: string | null;
   created_at: string;
   resolved_at?: string | null;
@@ -76,7 +77,7 @@ export interface AuditEvent {
   equipment_id?: string | null;
   actor?: string | null;
   timestamp: string;
-  metadata_json?: Record<string, any> | null;
+  metadata_json?: JsonObject | null;
   created_at: string;
 }
 
@@ -91,7 +92,7 @@ export interface EquipmentListItem {
   operator?: Operator | null;
   latest_telemetry?: Telemetry | null;
   utilization_rate: number;
-  metadata_json?: Record<string, any> | null;
+  metadata_json?: JsonObject | null;
   created_at: string;
   updated_at: string;
 }
@@ -154,7 +155,7 @@ export interface Anomaly {
   anomaly_score: number;
   severity: "CRITICAL" | "WARNING" | "INFO" | string;
   explanation: string;
-  supporting_signals: Record<string, any>;
+  supporting_signals: JsonObject;
   recommended_action_category?: string | null;
   detected_at: string;
 }
@@ -168,7 +169,7 @@ export interface Forecast {
   predicted_units: number;
   confidence: number;
   backtest_error?: number | null;
-  drivers?: Record<string, any> | null;
+  drivers?: JsonObject | null;
   explanation?: string | null;
   created_at: string;
 }
@@ -212,7 +213,7 @@ export interface Action {
   priority: "CRITICAL" | "HIGH" | "MEDIUM" | "LOW" | string;
   notes?: string | null;
   actor: string;
-  payload_json?: Record<string, any> | null;
+  payload_json?: JsonObject | null;
   created_at: string;
   completed_at?: string | null;
 }
@@ -227,8 +228,8 @@ export interface ImpactRecord {
   realized_amount: number;
   currency: string;
   calculation_basis: string;
-  before_state?: Record<string, any> | null;
-  after_state?: Record<string, any> | null;
+  before_state?: JsonObject | null;
+  after_state?: JsonObject | null;
   calculated_at: string;
 }
 
@@ -238,7 +239,7 @@ export interface ImpactDetail {
   action_type: string;
   impact_type: string;
   daily_rate: number;
-  baseline_metrics: Record<string, any>;
+  baseline_metrics: JsonObject;
   avoided_cost: number;
   realized_savings: number;
   calculation_basis: string;

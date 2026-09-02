@@ -29,20 +29,20 @@ def setup_db():
 
 
 def test_calculate_idle_reassignment_impact():
-    impact = calculate_idle_reassignment_impact(daily_rate=450.0, idle_hours=14.2)
+    impact = calculate_idle_reassignment_impact(daily_rate=18500.0, idle_hours=14.2)
     assert impact["impact_type"] == "IDLE_AVOIDANCE"
-    assert impact["daily_rate"] == 450.0
+    assert impact["daily_rate"] == 18500.0
     assert impact["avoidable_days"] == 1.8
-    assert impact["estimated_savings_usd"] == 810.0
+    assert impact["estimated_savings_usd"] == 33300.0
     assert "1.8 avoidable idle days" in impact["calculation_basis"]
 
 
 def test_calculate_overdue_return_impact():
-    impact = calculate_overdue_return_impact(daily_rate=180.0, overdue_hours=48.0)
+    impact = calculate_overdue_return_impact(daily_rate=7500.0, overdue_hours=48.0)
     assert impact["impact_type"] == "OVERDUE_SURCHARGE_AVOIDED"
-    assert impact["daily_rate"] == 180.0
+    assert impact["daily_rate"] == 7500.0
     assert impact["days_overdue"] == 2.0
-    assert impact["estimated_savings_usd"] == 360.0
+    assert impact["estimated_savings_usd"] == 15000.0
     assert "2.0 overdue days" in impact["calculation_basis"]
 
 
@@ -122,16 +122,16 @@ def test_recommendations_filter_by_equipment_and_priority():
         assert r["priority"] == "HIGH"
 
 
-def test_trigger_action_from_recommendation():
+def test_trigger_action_from_recommendation(auth_client):
     # First get list
-    res_list = client.get("/api/v1/recommendations")
+    res_list = auth_client.get("/api/v1/recommendations")
     assert res_list.status_code == 200
     recs = res_list.json()
     assert len(recs) > 0
     rec_id = recs[0]["id"]
 
     # Trigger action
-    res_action = client.post(
+    res_action = auth_client.post(
         f"/api/v1/recommendations/{rec_id}/action",
         json={
             "notes": "Initiated operational review from recommendations panel",

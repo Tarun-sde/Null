@@ -1,6 +1,6 @@
 import React from "react";
 import Link from "next/link";
-import { History, ArrowUpRight, CheckCircle2, UserCheck, ShieldAlert, ArrowLeftRight } from "lucide-react";
+import { History, CheckCircle2, UserCheck, ShieldAlert, ArrowLeftRight } from "lucide-react";
 import { GlassCard } from "../ui/GlassCard";
 import { AuditEvent } from "@/types";
 
@@ -30,15 +30,15 @@ const DEFAULT_EVENTS: Array<{
     equipment_id: "EQX1002",
     actor: "Yard Logistics",
     timestamp: "2 days ago",
-    details: "Delivered to Northside Logistics Hub staging area.",
+    details: "Delivered to Navi Mumbai International Airport staging area.",
   },
   {
     id: 3,
     event_type: "CHECKIN",
     equipment_id: "EQX1007",
-    actor: "Marcus Vance",
+    actor: "Rajesh Sharma",
     timestamp: "3 days ago",
-    details: "Returned from Highland Medical Center. Full inspection passed.",
+    details: "Returned from Kallambella Wind Energy Corridor. Full inspection passed.",
   },
   {
     id: 4,
@@ -46,11 +46,20 @@ const DEFAULT_EVENTS: Array<{
     equipment_id: "EQX1001",
     actor: "System Dispatch",
     timestamp: "5 days ago",
-    details: "Dispatched to Metro Tunnel Extension for excavation.",
+    details: "Dispatched to Bailadila Iron Ore Complex for excavation.",
   },
 ];
 
 export function ActivityTimeline({ events }: ActivityTimelineProps) {
+  const displayEvents = events && events.length > 0 ? events.map((e) => ({
+    id: e.id,
+    event_type: e.event_type,
+    equipment_id: e.equipment_id,
+    actor: e.actor || "System",
+    timestamp: new Date(e.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+    details: typeof e.metadata_json === "string" ? e.metadata_json : JSON.stringify(e.metadata_json || {}),
+  })) : DEFAULT_EVENTS;
+
   const getEventIcon = (type: string) => {
     switch (type.toUpperCase()) {
       case "ALERT_CREATED":
@@ -84,7 +93,7 @@ export function ActivityTimeline({ events }: ActivityTimelineProps) {
 
       {/* Vertical Timeline */}
       <div className="mt-6 space-y-5 relative before:absolute before:left-3.5 before:top-2 before:bottom-2 before:w-0.5 before:bg-black/10">
-        {DEFAULT_EVENTS.map((event) => (
+        {displayEvents.map((event) => (
           <div key={event.id} className="relative flex items-start gap-4 pl-1">
             {/* Timeline Icon Node */}
             <div className="size-7 rounded-full border border-black/10 bg-white grid place-items-center shadow-sm shrink-0 z-10">

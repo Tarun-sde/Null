@@ -96,7 +96,7 @@ export function AlertsPanel({ alerts = [] }: AlertsPanelProps) {
             const style = getSeverityStyle(alert.severity);
             const timeDisplay = alert.created_at
               ? formatTimeAgo(alert.created_at)
-              : (alert as any).timestamp || "Recently";
+              : "Recently";
 
             return (
               <div

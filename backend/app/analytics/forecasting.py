@@ -231,7 +231,7 @@ def generate_demand_forecasts(
                     "wma_weights": WMA_WEIGHTS,
                     "recent_actuals": sim_history[:3],
                     "data_adequacy": adequacy,
-                    "site_work_phase": "Active Construction & Earthwork" if site.id == "SITE-001" else "Terminal Logistics" if site.id == "SITE-002" else "Structural Facility Build",
+                    "site_work_phase": "Open-Cast Ore Extraction" if site.id == "SITE-001" else "Airside Earthworks & Staging" if site.id == "SITE-002" else "Turbine Erection & Infrastructure",
                 }
 
                 driver_text = f"sustained {drivers['site_work_phase'].lower()} activities"

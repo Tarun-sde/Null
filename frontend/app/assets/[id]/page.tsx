@@ -5,20 +5,13 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   ArrowLeft,
-  Calendar,
-  Clock,
   DollarSign,
   Fuel,
   Gauge,
-  MapPin,
   QrCode,
   ShieldAlert,
   Sparkles,
-  Truck,
-  User,
-  History,
   CheckCircle2,
-  AlertTriangle,
   ArrowRight,
   ShieldCheck,
   Zap,
@@ -35,9 +28,8 @@ import { CheckoutModal } from "@/components/handoff/CheckoutModal";
 import { CheckinModal } from "@/components/handoff/CheckinModal";
 import { fetchEquipmentDetail, fetchEquipmentAnomalies, fetchEquipmentRecommendations, triggerActionFromRecommendation } from "@/lib/api";
 import { useTelemetryStream } from "@/lib/useTelemetryStream";
-import { EquipmentDetail, EquipmentStatus, TelemetryStreamEvent, Telemetry, Anomaly, Recommendation } from "@/types";
-import { STATUS_CONFIG } from "@/lib/constants";
-import { cn } from "@/lib/utils";
+import { EquipmentDetail, TelemetryStreamEvent, Telemetry, Anomaly, Recommendation } from "@/types";
+import { cn, getErrorMessage, formatCurrency } from "@/lib/utils";
 
 export default function AssetDetailPage() {
   const params = useParams();
@@ -55,7 +47,7 @@ export default function AssetDetailPage() {
   const [checkoutModalOpen, setCheckoutModalOpen] = useState(false);
   const [checkinModalOpen, setCheckinModalOpen] = useState(false);
 
-  const loadDetail = async () => {
+  const loadDetail = useCallback(async () => {
     if (!id) return;
     try {
       setLoading(true);
@@ -68,19 +60,17 @@ export default function AssetDetailPage() {
       setEquipment(data);
       setAnomalies(anomData);
       setRecommendations(recData);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Error loading asset detail:", err);
-      setError(err.message === "NOT_FOUND" ? "Equipment Not Found" : "Failed to load asset");
+      setError(getErrorMessage(err, "Failed to load asset") === "NOT_FOUND" ? "Equipment Not Found" : "Failed to load asset");
     } finally {
       setLoading(false);
     }
-  };
-
-
+  }, [id]);
 
   useEffect(() => {
-    loadDetail();
-  }, [id]);
+    queueMicrotask(() => void loadDetail());
+  }, [loadDetail]);
 
   // Handle incoming real-time telemetry events for this specific asset
   const handleLiveTelemetry = useCallback((event: TelemetryStreamEvent) => {
@@ -145,8 +135,9 @@ export default function AssetDetailPage() {
     );
   }
 
-  const model = (equipment.metadata_json as any)?.model || "Standard Heavy Spec";
-  const serial = (equipment.metadata_json as any)?.serial || "SN-PENDING";
+  const metadata = equipment.metadata_json as { model?: string; serial?: string } | null;
+  const model = metadata?.model || "Standard Heavy Spec";
+  const serial = metadata?.serial || "SN-PENDING";
   const utilPct = Math.round(equipment.utilization_rate * 100);
   const engineHours = equipment.latest_telemetry?.engine_hours || 0;
   const idleHours = equipment.latest_telemetry?.idle_hours || 0;
@@ -197,7 +188,7 @@ export default function AssetDetailPage() {
           </p>
         </div>
 
-        {/* Action Buttons connected to Phase 3 Workflows */}
+        {/* Action Buttons */}
         <div className="flex flex-wrap items-center gap-3">
           <Link
             href="/scan"
@@ -276,7 +267,7 @@ export default function AssetDetailPage() {
             {fuelPct.toFixed(1)}%
           </p>
           <span className="text-[11px] text-[#7a7a7a] mt-2">
-            Estimated ~{Math.round(fuelPct * 1.8)} gallons remaining
+            Estimated ~{Math.round(fuelPct * 3.5)} Liters remaining
           </span>
         </GlassCard>
 
@@ -289,7 +280,7 @@ export default function AssetDetailPage() {
             className="text-3xl sm:text-4xl font-medium text-black mt-3 leading-none font-mono"
             style={{ fontFamily: "var(--font-playfair), Georgia, serif" }}
           >
-            ${equipment.daily_rate}
+            {formatCurrency(equipment.daily_rate)}
           </p>
           <span className="text-[11px] text-[#7a7a7a] mt-2">
             Supplier: <strong className="text-black">{equipment.dealer}</strong>
@@ -464,8 +455,8 @@ export default function AssetDetailPage() {
                       payload: recommendations[0].estimated_impact || {},
                     });
                     router.push("/actions");
-                  } catch (err: any) {
-                    alert(`Error triggering action: ${err.message}`);
+                  } catch (err: unknown) {
+                    alert(`Error triggering action: ${err instanceof Error ? err.message : "Unknown error"}`);
                   } finally {
                     setIsTriggeringAction(false);
                   }
@@ -575,7 +566,7 @@ export default function AssetDetailPage() {
                 </div>
                 {rental.condition_notes && (
                   <p className="text-[11px] text-[#777] italic pt-1">
-                    "{rental.condition_notes}"
+                    &quot;{rental.condition_notes}&quot;
                   </p>
                 )}
               </div>

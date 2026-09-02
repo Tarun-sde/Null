@@ -69,8 +69,8 @@ def test_get_equipment_detail_success():
     data = response.json()
     assert data["id"] == "EQX1001"
     assert data["type"] == "Excavator"
-    assert data["dealer"] == "Cat Rentals"
-    assert data["daily_rate"] == 450.0
+    assert data["dealer"] == "Tata Hitachi Construction Machinery"
+    assert data["daily_rate"] == 18500.0
     assert "status" in data
     assert "recent_telemetry" in data
     assert len(data["recent_telemetry"]) > 0

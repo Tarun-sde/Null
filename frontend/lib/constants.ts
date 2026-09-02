@@ -60,7 +60,25 @@ export const STATUS_CONFIG: Record<
 };
 
 export const SITE_COORDINATES = [
-  { id: "SITE-001", name: "Metro Tunnel Extension", lat: 37.7749, lng: -122.4194, location: "Sector 4 Downtown Transit Corridor" },
-  { id: "SITE-002", name: "Northside Logistics Hub", lat: 37.8044, lng: -122.2712, location: "Terminal B Port Industrial Zone" },
-  { id: "SITE-003", name: "Highland Medical Center", lat: 37.7600, lng: -122.4470, location: "Upper Ridge Medical Campus" },
+  {
+    id: "SITE-001",
+    name: "Bailadila Iron Ore Complex",
+    lat: 18.7180,
+    lng: 81.2580,
+    location: "Deposit 14 Mining Sector, Kirandul, Chhattisgarh",
+  },
+  {
+    id: "SITE-002",
+    name: "Navi Mumbai International Airport",
+    lat: 18.9894,
+    lng: 73.0648,
+    location: "Terminal 1 Earthworks & Staging, Maharashtra",
+  },
+  {
+    id: "SITE-003",
+    name: "Kallambella Wind Energy Corridor",
+    lat: 13.6067,
+    lng: 76.9033,
+    location: "NH-48 Industrial Package 3, Karnataka",
+  },
 ];

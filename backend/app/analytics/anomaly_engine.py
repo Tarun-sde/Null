@@ -226,7 +226,7 @@ def evaluate_overdue_rental(
         explanation = (
             f"Rental contract #{rental.id} for {equipment_id} is {overdue_hours:.1f}h overdue "
             f"(scheduled return was {due_at.strftime('%Y-%m-%d %H:%M UTC')}). "
-            f"Rate surcharge is active at ${rate:.2f}/day."
+            f"Rate surcharge is active at ₹{rate:,.2f}/day."
         )
         
         return AnomalyResult(

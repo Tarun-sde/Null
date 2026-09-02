@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 from app.db.session import SessionLocal
 from app.seed.seed import seed_database, ANCHOR_TIME
-from app.models import Equipment, Site, Operator, Rental, Telemetry, Alert, AuditEvent
+from app.models import Equipment, Site, Operator, Rental, Telemetry, Alert, AuditEvent, Action, ImpactRecord, Recommendation, Forecast
 from app.services.status_service import derive_status, EquipmentStatus
 from app.services.equipment_service import get_current_rental, get_latest_telemetry
 
@@ -18,23 +18,36 @@ def test_seed_counts_and_idempotency():
         rental_count = db.query(Rental).count()
         telemetry_count = db.query(Telemetry).count()
         alert_count = db.query(Alert).count()
+        rec_count = db.query(Recommendation).count()
+        action_count = db.query(Action).count()
+        impact_count = db.query(ImpactRecord).count()
+        forecast_count = db.query(Forecast).count()
         audit_count = db.query(AuditEvent).count()
 
         assert eq_count == 7
         assert site_count == 3
         assert op_count == 4
-        assert rental_count == 7
+        assert rental_count == 10
         assert telemetry_count == 42
-        assert alert_count == 4
-        assert audit_count == 4
+        assert alert_count == 10
+        assert rec_count == 8
+        assert action_count == 7
+        assert impact_count == 4
+        assert forecast_count == 72
+        assert audit_count == 14
 
         # Run again with reset=False to verify idempotency
         seed_database(db, reset=False)
         assert db.query(Equipment).count() == 7
         assert db.query(Site).count() == 3
         assert db.query(Operator).count() == 4
-        assert db.query(Rental).count() == 7
+        assert db.query(Rental).count() == 10
         assert db.query(Telemetry).count() == 42
+        assert db.query(Alert).count() == 10
+        assert db.query(Recommendation).count() == 8
+        assert db.query(Action).count() == 7
+        assert db.query(ImpactRecord).count() == 4
+        assert db.query(Forecast).count() == 72
     finally:
         db.close()
 

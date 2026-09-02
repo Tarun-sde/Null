@@ -15,6 +15,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { fetchDashboardKPIs, fetchEquipmentList, fetchAlerts, fetchRecommendations } from "@/lib/api";
 import { useTelemetryStream } from "@/lib/useTelemetryStream";
 import { DashboardKPIs, EquipmentListItem, TelemetryStreamEvent, Telemetry, Alert, Recommendation } from "@/types";
+import { getErrorMessage } from "@/lib/utils";
 
 export default function DashboardPage() {
   const [kpis, setKpis] = useState<DashboardKPIs | null>(null);
@@ -39,9 +40,9 @@ export default function DashboardPage() {
       setEquipmentList(eqRes);
       setAlerts(alertRes);
       setRecommendations(recRes);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Dashboard data load error:", err);
-      setError(err.message || "Failed to load fleet data");
+      setError(getErrorMessage(err, "Failed to load fleet data"));
     } finally {
       setLoading(false);
     }
@@ -50,7 +51,7 @@ export default function DashboardPage() {
 
 
   useEffect(() => {
-    loadInitialData();
+    queueMicrotask(() => void loadInitialData());
   }, []);
 
   // Handle incoming real-time telemetry events from SSE
@@ -146,13 +147,13 @@ export default function DashboardPage() {
       {/* KPI Cards Grid */}
       <section className="mb-10">
         {loading ? (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-5">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3.5 sm:gap-5">
             {[...Array(5)].map((_, i) => (
               <CardSkeleton key={i} />
             ))}
           </div>
         ) : (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-5">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3.5 sm:gap-5">
             <MetricCard
               title="Active Fleet"
               value={kpis?.active ?? 2}

@@ -1,29 +1,20 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import {
   Zap,
   CheckCircle2,
   Clock,
-  XCircle,
   ArrowUpRight,
   Filter,
   Plus,
-  Play,
-  RotateCcw,
   Check,
-  Building2,
-  Truck,
-  Sparkles,
-  DollarSign,
-  AlertTriangle,
 } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { MetricCard } from "@/components/ui/MetricCard";
 import { TableSkeleton } from "@/components/ui/SkeletonLoader";
-import { EmptyState } from "@/components/ui/EmptyState";
 import {
   fetchActions,
   completeAction,
@@ -33,7 +24,7 @@ import {
   fetchEquipmentList,
 } from "@/lib/api";
 import { Action, Site, EquipmentListItem } from "@/types";
-import { cn } from "@/lib/utils";
+import { cn, getErrorMessage } from "@/lib/utils";
 
 export default function ActionsPage() {
   const [actions, setActions] = useState<Action[]>([]);
@@ -42,7 +33,7 @@ export default function ActionsPage() {
   const [selectedStatus, setSelectedStatus] = useState<string>("ALL");
   const [selectedType, setSelectedType] = useState<string>("ALL");
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [, setError] = useState<string | null>(null);
 
   // Complete Action Modal State
   const [completingAction, setCompletingAction] = useState<Action | null>(null);
@@ -58,7 +49,7 @@ export default function ActionsPage() {
   const [newPriority, setNewPriority] = useState("HIGH");
   const [newNotes, setNewNotes] = useState("");
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -70,17 +61,17 @@ export default function ActionsPage() {
       setActions(actionsData);
       setSites(sitesData);
       setEquipmentList(eqData);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Error loading actions:", err);
-      setError(err.message || "Failed to load operational actions");
+      setError(getErrorMessage(err, "Failed to load operational actions"));
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
-    loadData();
-  }, []);
+    queueMicrotask(() => void loadData());
+  }, [loadData]);
 
   const handleCompleteSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -88,7 +79,7 @@ export default function ActionsPage() {
 
     try {
       setIsSubmitting(true);
-      const payload: Record<string, any> = {};
+      const payload: Record<string, unknown> = {};
       if (completingAction.action_type === "REASSIGN") {
         payload.target_site_id = targetSiteId;
       } else if (completingAction.action_type === "EXTEND") {
@@ -104,8 +95,8 @@ export default function ActionsPage() {
       setCompletingAction(null);
       setCompleteNotes("");
       await loadData();
-    } catch (err: any) {
-      alert(`Error completing action: ${err.message}`);
+    } catch (err: unknown) {
+      alert(`Error completing action: ${getErrorMessage(err, "Unknown error")}`);
     } finally {
       setIsSubmitting(false);
     }
@@ -119,8 +110,8 @@ export default function ActionsPage() {
         actor: "Commander Marcus Vance",
       });
       await loadData();
-    } catch (err: any) {
-      alert(`Error cancelling action: ${err.message}`);
+    } catch (err: unknown) {
+      alert(`Error cancelling action: ${getErrorMessage(err, "Unknown error")}`);
     }
   };
 
@@ -138,8 +129,8 @@ export default function ActionsPage() {
       setNewActionModalOpen(false);
       setNewNotes("");
       await loadData();
-    } catch (err: any) {
-      alert(`Error creating action: ${err.message}`);
+    } catch (err: unknown) {
+      alert(`Error creating action: ${getErrorMessage(err, "Unknown error")}`);
     } finally {
       setIsSubmitting(false);
     }
@@ -212,7 +203,7 @@ export default function ActionsPage() {
       </section>
 
       {/* KPI Cards */}
-      <section className="grid grid-cols-2 lg:grid-cols-4 gap-5 mb-10">
+      <section className="grid grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-5 mb-10">
         <MetricCard
           title="Active Actions"
           value={pendingCount}

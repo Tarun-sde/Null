@@ -1,10 +1,12 @@
+from datetime import datetime, timezone
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 from app.db.session import get_db
 from app.models import Equipment
-from app.schemas.equipment import EquipmentListItem, EquipmentDetailResponse
+from app.schemas.equipment import EquipmentCreate, EquipmentListItem, EquipmentDetailResponse
 from app.services.equipment_service import build_equipment_list_item, build_equipment_detail
+from app.core.security import get_current_user
 
 router = APIRouter(prefix="/equipment", tags=["Equipment"])
 
@@ -60,6 +62,47 @@ def list_equipment(
         results.append(item)
 
     return results
+
+
+@router.post("", response_model=EquipmentDetailResponse, status_code=status.HTTP_201_CREATED)
+def create_equipment(
+    payload: EquipmentCreate,
+    db: Session = Depends(get_db),
+    _current_user=Depends(get_current_user),
+):
+    """
+    Create a new equipment asset. Requires authentication.
+    Equipment ID must be unique. QR code is automatically set to the equipment ID.
+    """
+    # Validate unique ID
+    existing = db.query(Equipment).filter(Equipment.id == payload.id).first()
+    if existing:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Equipment with ID '{payload.id}' already exists",
+        )
+
+    now = datetime.now(timezone.utc)
+    metadata_json: dict = {"qr_code": payload.id}
+    if payload.model:
+        metadata_json["model"] = payload.model
+    if payload.serial:
+        metadata_json["serial"] = payload.serial
+
+    equipment = Equipment(
+        id=payload.id.upper().strip(),
+        type=payload.type,
+        dealer=payload.dealer,
+        daily_rate=payload.daily_rate,
+        metadata_json=metadata_json,
+        created_at=now,
+        updated_at=now,
+    )
+    db.add(equipment)
+    db.commit()
+    db.refresh(equipment)
+
+    return build_equipment_detail(equipment)
 
 
 @router.get("/{id}", response_model=EquipmentDetailResponse)

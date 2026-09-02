@@ -1,44 +1,46 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { AppShell } from "@/components/layout/AppShell";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { AssetCard } from "@/components/assets/AssetCard";
+import { AddEquipmentModal } from "@/components/assets/AddEquipmentModal";
 import { EquipmentTable } from "@/components/dashboard/EquipmentTable";
 import { CardSkeleton, TableSkeleton } from "@/components/ui/SkeletonLoader";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { fetchEquipmentList } from "@/lib/api";
-import { EquipmentListItem, EquipmentStatus } from "@/types";
-import { LayoutGrid, List, Search, Filter, Truck, DollarSign, Activity, AlertCircle } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { EquipmentListItem } from "@/types";
+import { LayoutGrid, List, Search, Plus } from "lucide-react";
+import { cn, getErrorMessage, formatCurrency } from "@/lib/utils";
 
 export default function AssetsPage() {
   const [equipmentList, setEquipmentList] = useState<EquipmentListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showAddModal, setShowAddModal] = useState(false);
 
   const [viewMode, setViewMode] = useState<"grid" | "table">("grid");
   const [searchQuery, setSearchQuery] = useState("");
   const [statusTab, setStatusTab] = useState("ALL");
   const [typeFilter, setTypeFilter] = useState("ALL");
 
-  const loadEquipment = async () => {
+  const loadEquipment = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
       const data = await fetchEquipmentList();
       setEquipmentList(data);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Failed to load equipment list:", err);
-      setError(err.message || "Failed to load equipment catalog");
+      setError(getErrorMessage(err, "Failed to load equipment catalog"));
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
-    loadEquipment();
-  }, []);
+    queueMicrotask(() => void loadEquipment());
+  }, [loadEquipment]);
 
   // Compute summary stats
   const totalDailyRate = equipmentList.reduce((acc, eq) => acc + eq.daily_rate, 0);
@@ -84,8 +86,18 @@ export default function AssetsPage() {
           </p>
         </div>
 
-        {/* View Mode Toggle */}
-        <div className="flex items-center gap-1.5 rounded-xl border border-black/10 bg-white/70 p-1 shadow-sm self-start md:self-auto">
+        {/* Right side: Add Equipment + View Mode Toggle */}
+        <div className="flex items-center gap-3 self-start md:self-auto">
+          <button
+            id="add-equipment-button"
+            onClick={() => setShowAddModal(true)}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#ff5a24] text-white text-xs font-semibold hover:bg-[#e04d1a] transition-all shadow-sm"
+          >
+            <Plus className="size-3.5" />
+            <span>Add Equipment</span>
+          </button>
+
+          <div className="flex items-center gap-1.5 rounded-xl border border-black/10 bg-white/70 p-1 shadow-sm">
           <button
             onClick={() => setViewMode("grid")}
             className={cn(
@@ -110,6 +122,7 @@ export default function AssetsPage() {
             <List className="size-3.5" />
             <span>Table Ledger</span>
           </button>
+          </div>
         </div>
       </div>
 
@@ -123,7 +136,7 @@ export default function AssetsPage() {
           >
             {equipmentList.length}
           </p>
-          <span className="text-[11px] text-[#888] mt-2">7 Challenge Fleet Assets</span>
+          <span className="text-[11px] text-[#888] mt-2">Total registered fleet</span>
         </GlassCard>
 
         <GlassCard className="p-5 flex flex-col justify-between">
@@ -132,7 +145,7 @@ export default function AssetsPage() {
             className="text-3xl font-medium text-black mt-2 leading-none font-mono"
             style={{ fontFamily: "var(--font-playfair), Georgia, serif" }}
           >
-            ${totalDailyRate.toLocaleString()}
+            {formatCurrency(totalDailyRate)}
           </p>
           <span className="text-[11px] text-[#888] mt-2">Active fleet day-rate</span>
         </GlassCard>
@@ -250,6 +263,13 @@ export default function AssetsPage() {
           <EquipmentTable equipmentList={filteredEquipment} />
         )}
       </section>
+
+      {/* Add Equipment Modal */}
+      <AddEquipmentModal
+        isOpen={showAddModal}
+        onClose={() => setShowAddModal(false)}
+        onSuccess={() => void loadEquipment()}
+      />
     </AppShell>
   );
 }

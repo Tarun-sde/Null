@@ -1,6 +1,6 @@
 # RentSense Control Tower — Design Reference Specification
 
-This document captures the visual language, design system, layout principles, components, typography, animations, and UX patterns observed directly from the reference assets (`DESIGN.md` and `generated-page.html`).
+This document captures the visual language, design system, layout principles, components, typography, animations, and UX patterns defined in `DESIGN.md`.
 
 ---
 

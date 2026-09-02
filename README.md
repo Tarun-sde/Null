@@ -162,37 +162,23 @@ npm run dev
 ### 3. Start Telemetry Simulator (Optional)
 ```bash
 cd simulator
-python simulate.py
+python main.py
 ```
 
 ---
 
 ## 8. Automated Testing & Verification
 
-### Run Pytest Regression Suite (99 Tests)
+### Run Full Backend Pytest Suite (142 Tests)
 ```bash
 cd backend
-.\venv\Scripts\pytest.exe -c pytest.ini -v backend
+.\venv\Scripts\python.exe -m pytest
 ```
 
-### Run End-to-End Phase Verifications
-```bash
-# Phase 4 Realtime SSE & Fallback Polling Verification
-.\venv\Scripts\python.exe backend/app/tests/verify_phase4_realtime.py
-
-# Phase 5 Intelligence & Demand Forecasting Verification
-.\venv\Scripts\python.exe backend/app/tests/verify_phase5_intelligence.py
-
-# Phase 6 Recommendations, Actions & Financial Impact Verification
-.\venv\Scripts\python.exe backend/app/tests/verify_phase6_actions_impact.py
-
-# Phase 7 Production Hardening & Smoke Test Verification
-.\venv\Scripts\python.exe backend/app/tests/verify_phase7_production.py
-```
-
-### Production Frontend Build Check
+### Run Frontend Static Analysis & Production Build
 ```bash
 cd frontend
+npm run lint
 npm run build
 ```
 
@@ -202,17 +188,18 @@ npm run build
 
 ### Run Full Stack with Docker Compose
 ```bash
-docker-compose up --build -d
+docker compose up --build -d
 ```
 
 ### Services Started:
 1. `rentsense-db`: PostgreSQL 16 on port `5432` with persistent volume `pgdata`.
 2. `rentsense-backend`: FastAPI on port `8000` with HTTP healthcheck (`/health`).
-3. `rentsense-frontend`: Next.js 15 production server on port `3000`.
+3. `rentsense-frontend`: Next.js production server on port `3000`.
+4. `rentsense-nginx`: Nginx reverse proxy on port `80` with unbuffered SSE streaming.
 
 ### Run with Telemetry Simulator Profile:
 ```bash
-docker-compose --profile simulation up --build -d
+docker compose --profile simulation up --build -d
 ```
 
 ---

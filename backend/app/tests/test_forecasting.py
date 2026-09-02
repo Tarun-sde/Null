@@ -56,7 +56,7 @@ def test_confidence_calculation_insufficient_data():
 
 def test_explanation_generation_contains_metrics():
     explanation = generate_site_forecast_explanation(
-        site_name="Northside Logistics Hub",
+        site_name="Navi Mumbai International Airport",
         equipment_type="Bulldozer",
         predicted_units=2.8,
         confidence=0.85,
@@ -64,7 +64,7 @@ def test_explanation_generation_contains_metrics():
         mae=0.25,
     )
     assert "Bulldozer" in explanation
-    assert "Northside Logistics Hub" in explanation
+    assert "Navi Mumbai International Airport" in explanation
     assert "2.8 units" in explanation
     assert "85%" in explanation
     assert "0.25 units" in explanation

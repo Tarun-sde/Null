@@ -16,43 +16,43 @@ def setup_module():
         db.close()
 
 
-def test_checkout_unknown_equipment():
+def test_checkout_unknown_equipment(auth_client):
     payload = {
         "equipment_id": "EQX_UNKNOWN_999",
         "site_id": "SITE-001",
         "operator_id": "OP-001",
         "due_at": (datetime.now(timezone.utc) + timedelta(days=7)).isoformat(),
     }
-    response = client.post("/api/v1/rentals/checkout", json=payload)
+    response = auth_client.post("/api/v1/rentals/checkout", json=payload)
     assert response.status_code == 404
     assert "not found" in response.json()["detail"].lower()
 
 
-def test_checkout_unknown_site():
+def test_checkout_unknown_site(auth_client):
     payload = {
         "equipment_id": "EQX1007",
         "site_id": "SITE_UNKNOWN_999",
         "operator_id": "OP-001",
         "due_at": (datetime.now(timezone.utc) + timedelta(days=7)).isoformat(),
     }
-    response = client.post("/api/v1/rentals/checkout", json=payload)
+    response = auth_client.post("/api/v1/rentals/checkout", json=payload)
     assert response.status_code == 404
     assert "site" in response.json()["detail"].lower()
 
 
-def test_checkout_unknown_operator():
+def test_checkout_unknown_operator(auth_client):
     payload = {
         "equipment_id": "EQX1007",
         "site_id": "SITE-001",
         "operator_id": "OP_UNKNOWN_999",
         "due_at": (datetime.now(timezone.utc) + timedelta(days=7)).isoformat(),
     }
-    response = client.post("/api/v1/rentals/checkout", json=payload)
+    response = auth_client.post("/api/v1/rentals/checkout", json=payload)
     assert response.status_code == 404
     assert "operator" in response.json()["detail"].lower()
 
 
-def test_checkout_already_rented_equipment():
+def test_checkout_already_rented_equipment(auth_client):
     # EQX1001 is already rented at SITE-001
     payload = {
         "equipment_id": "EQX1001",
@@ -60,12 +60,12 @@ def test_checkout_already_rented_equipment():
         "operator_id": "OP-002",
         "due_at": (datetime.now(timezone.utc) + timedelta(days=7)).isoformat(),
     }
-    response = client.post("/api/v1/rentals/checkout", json=payload)
+    response = auth_client.post("/api/v1/rentals/checkout", json=payload)
     assert response.status_code == 409
     assert "already has an active rental" in response.json()["detail"].lower() or "already checked out" in response.json()["detail"].lower()
 
 
-def test_checkout_success_and_audit():
+def test_checkout_success_and_audit(auth_client):
     # EQX1007 is unassigned in yard
     now = datetime.now(timezone.utc)
     due = now + timedelta(days=7)
@@ -78,7 +78,7 @@ def test_checkout_success_and_audit():
         "condition_notes": "Clean pickup for logistics foundation",
         "actor": "Marcus Vance",
     }
-    response = client.post("/api/v1/rentals/checkout", json=payload)
+    response = auth_client.post("/api/v1/rentals/checkout", json=payload)
     assert response.status_code == 201
     data = response.json()
     assert data["success"] is True
@@ -114,22 +114,20 @@ def test_checkout_success_and_audit():
         db.close()
 
 
-def test_checkin_unknown_equipment():
+def test_checkin_unknown_equipment(auth_client):
     payload = {
         "equipment_id": "EQX_UNKNOWN_999",
         "condition": "Good",
     }
-    response = client.post("/api/v1/rentals/checkin", json=payload)
+    response = auth_client.post("/api/v1/rentals/checkin", json=payload)
     assert response.status_code == 404
 
 
 def test_checkin_equipment_without_active_rental():
-    # Make sure EQX1003 is checked in or use equipment with no open rental
-    # EQX1007 was just checked out, let's check it in, then try to check in again
     pass
 
 
-def test_checkin_success_and_audit():
+def test_checkin_success_and_audit(auth_client):
     # Check in EQX1007 which was checked out above
     payload = {
         "equipment_id": "EQX1007",
@@ -137,7 +135,7 @@ def test_checkin_success_and_audit():
         "notes": "Returned clean, full fuel tank",
         "actor": "Elena Rostova",
     }
-    response = client.post("/api/v1/rentals/checkin", json=payload)
+    response = auth_client.post("/api/v1/rentals/checkin", json=payload)
     assert response.status_code == 200
     data = response.json()
     assert data["success"] is True
@@ -149,7 +147,7 @@ def test_checkin_success_and_audit():
     assert data["audit_event"]["actor"] == "Elena Rostova"
 
     # Now trying to check in again should fail with 409
-    repeat_response = client.post("/api/v1/rentals/checkin", json=payload)
+    repeat_response = auth_client.post("/api/v1/rentals/checkin", json=payload)
     assert repeat_response.status_code == 409
     assert "does not have an active rental" in repeat_response.json()["detail"].lower()
 

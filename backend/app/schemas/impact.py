@@ -10,7 +10,7 @@ class ImpactRecordBase(BaseModel):
     impact_type: str = Field(..., description="IDLE_AVOIDANCE, EARLY_RETURN, OVERDUE_SURCHARGE_AVOIDED, UTILIZATION_RECOVERY")
     estimated_amount: float
     realized_amount: float = 0.0
-    currency: str = "USD"
+    currency: str = "INR"
     calculation_basis: str
     before_state: Optional[Dict[str, Any]] = None
     after_state: Optional[Dict[str, Any]] = None

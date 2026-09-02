@@ -9,7 +9,6 @@ import {
   YAxis,
   Tooltip,
   CartesianGrid,
-  Legend,
 } from "recharts";
 import { GlassCard } from "../ui/GlassCard";
 import { Telemetry } from "@/types";
@@ -28,7 +27,7 @@ export function TelemetryChart({
     (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
   );
 
-  const formattedData = sortedData.map((t, idx) => {
+  const formattedData = sortedData.map((t) => {
     const d = new Date(t.timestamp);
     const timeLabel = `${d.getHours().toString().padStart(2, "0")}:${d.getMinutes().toString().padStart(2, "0")}`;
     const activeHours = Math.max(0, t.engine_hours - t.idle_hours);

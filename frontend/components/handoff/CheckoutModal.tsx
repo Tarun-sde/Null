@@ -6,7 +6,7 @@ import { GlassCard } from "../ui/GlassCard";
 import { StatusBadge } from "../ui/StatusBadge";
 import { fetchSites, fetchOperators, checkoutEquipment } from "@/lib/api";
 import { Site, Operator, CheckoutResponse } from "@/types";
-import { cn } from "@/lib/utils";
+import { formatDayRate } from "@/lib/utils";
 
 interface CheckoutModalProps {
   isOpen: boolean;
@@ -23,7 +23,7 @@ export function CheckoutModal({
   onClose,
   equipmentId,
   equipmentType = "Heavy Machinery",
-  dailyRate = 400,
+  dailyRate = 18500,
   dealer = "Equipment Dealer",
   onSuccess,
 }: CheckoutModalProps) {
@@ -47,8 +47,10 @@ export function CheckoutModal({
 
   useEffect(() => {
     if (!isOpen) {
-      setSuccessData(null);
-      setErrorMessage(null);
+      queueMicrotask(() => {
+        setSuccessData(null);
+        setErrorMessage(null);
+      });
       return;
     }
 
@@ -63,7 +65,7 @@ export function CheckoutModal({
         setOperators(opsRes);
         if (sitesRes.length > 0) setSelectedSiteId(sitesRes[0].id);
         if (opsRes.length > 0) setSelectedOperatorId(opsRes[0].id);
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error("Failed to load sites/operators:", err);
       } finally {
         setLoadingOptions(false);
@@ -101,15 +103,12 @@ export function CheckoutModal({
       if (onSuccess) {
         onSuccess(res);
       }
-    } catch (err: any) {
-      setErrorMessage(err.message || "Failed to execute equipment checkout.");
+    } catch (err: unknown) {
+      setErrorMessage(err instanceof Error ? err.message : "Failed to execute equipment checkout.");
     } finally {
       setSubmitting(false);
     }
   };
-
-  const selectedSite = sites.find((s) => s.id === selectedSiteId);
-  const selectedOperator = operators.find((o) => o.id === selectedOperatorId);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in-reveal">
@@ -145,7 +144,7 @@ export function CheckoutModal({
               <span className="text-[#666]">{equipmentType} • {dealer}</span>
             </div>
             <div className="text-right">
-              <span className="font-mono font-bold text-sm text-black block">${dailyRate}/day</span>
+              <span className="font-mono font-bold text-sm text-black block">{formatDayRate(dailyRate)}</span>
               <StatusBadge status="UNASSIGNED" size="sm" />
             </div>
           </div>

@@ -1,6 +1,6 @@
 import React from "react";
 import Link from "next/link";
-import { ArrowRight, QrCode, Sparkles, Activity } from "lucide-react";
+import { ArrowRight, QrCode } from "lucide-react";
 import { GlassCard } from "../ui/GlassCard";
 
 interface HeroOverviewProps {

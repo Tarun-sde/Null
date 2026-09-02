@@ -28,6 +28,9 @@ ENV PATH=/root/.local/bin:$PATH
 # Copy application source
 COPY . .
 
+# Ensure entrypoint is executable
+RUN chmod +x /app/docker-entrypoint.sh
+
 # Set environment defaults
 ENV ENVIRONMENT=production
 ENV LOG_LEVEL=INFO
@@ -40,5 +43,5 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
   CMD curl -f http://localhost:8000/health || exit 1
 
-# Start production server
-CMD ["python", "-m", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Start production server with migration bootstrap
+CMD ["/app/docker-entrypoint.sh"]

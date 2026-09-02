@@ -3,11 +3,11 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Sparkles, DollarSign, ArrowRight, CheckCircle2, Zap } from "lucide-react";
+import { Sparkles, CheckCircle2, Zap } from "lucide-react";
 import { GlassCard } from "../ui/GlassCard";
 import { Recommendation } from "@/types";
 import { triggerActionFromRecommendation } from "@/lib/api";
-import { cn } from "@/lib/utils";
+import { formatCurrency } from "@/lib/utils";
 
 interface RecommendationsPanelProps {
   recommendations?: Recommendation[];
@@ -38,8 +38,8 @@ export function RecommendationsPanel({
         onActionTriggered();
       }
       router.push("/actions");
-    } catch (err: any) {
-      alert(`Error triggering action: ${err.message}`);
+    } catch (err: unknown) {
+      alert(`Error triggering action: ${err instanceof Error ? err.message : "Unknown error"}`);
     } finally {
       setSubmittingId(null);
     }
@@ -57,7 +57,7 @@ export function RecommendationsPanel({
             </h3>
           </div>
           <span className="text-xs font-mono text-[#ff5a24] font-semibold bg-orange-50 px-2.5 py-0.5 rounded-full border border-[#ff5a24]/30">
-            ${Math.round(totalAvoidableCost).toLocaleString()} Avoidable Cost
+            {formatCurrency(totalAvoidableCost)} Avoidable Cost
           </span>
         </div>
         <p className="text-xs text-[#6a6a6a] mt-1">
@@ -98,7 +98,7 @@ export function RecommendationsPanel({
 
                   <div className="text-right shrink-0">
                     <span className="text-xs font-bold text-emerald-700 block font-mono">
-                      +${Math.round(savings).toLocaleString()}
+                      +{formatCurrency(savings)}
                     </span>
                     <span className="text-[10px] text-[#7a7a7a] block mt-0.5">
                       {Math.round(rec.confidence * 100)}% Conf.

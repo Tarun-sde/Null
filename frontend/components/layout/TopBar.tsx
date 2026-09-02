@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Menu, Search, Bell, Shield, User, Radio, RefreshCw, WifiOff } from "lucide-react";
+import { Menu, Search, Bell } from "lucide-react";
 import { ConnectionState } from "@/lib/useTelemetryStream";
 import { cn } from "@/lib/utils";
 

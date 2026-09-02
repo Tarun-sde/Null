@@ -14,7 +14,7 @@ class ImpactRecord(Base):
     impact_type = Column(String(100), nullable=False, index=True)  # IDLE_AVOIDANCE, EARLY_RETURN, OVERDUE_SURCHARGE_AVOIDED, UTILIZATION_RECOVERY
     estimated_amount = Column(Float, nullable=False, default=0.0)
     realized_amount = Column(Float, nullable=False, default=0.0)
-    currency = Column(String(10), nullable=False, default="USD")
+    currency = Column(String(10), nullable=False, default="INR")
     calculation_basis = Column(Text, nullable=False)
     before_state = Column(JSON, nullable=True)
     after_state = Column(JSON, nullable=True)

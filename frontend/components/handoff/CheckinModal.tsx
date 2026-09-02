@@ -60,8 +60,8 @@ export function CheckinModal({
       if (onSuccess) {
         onSuccess(res);
       }
-    } catch (err: any) {
-      setErrorMessage(err.message || "Failed to execute equipment check-in.");
+    } catch (err: unknown) {
+      setErrorMessage(err instanceof Error ? err.message : "Failed to execute equipment check-in.");
     } finally {
       setSubmitting(false);
     }

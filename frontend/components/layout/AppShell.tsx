@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { Sidebar } from "./Sidebar";
 import { TopBar } from "./TopBar";
+import { ChatAssistant } from "@/components/chat/ChatAssistant";
 import { ConnectionState } from "@/lib/useTelemetryStream";
 
 interface AppShellProps {
@@ -30,10 +31,13 @@ export function AppShell({
           openAlertsCount={openAlertsCount}
           connectionState={connectionState}
         />
-        <main className="flex-1 p-6 sm:p-10 lg:p-12 max-w-[112rem] w-full mx-auto animate-in-reveal">
+        <main className="flex-1 p-4 sm:p-10 lg:p-12 max-w-[112rem] w-full mx-auto animate-in-reveal">
           {children}
         </main>
       </div>
+
+      {/* Persistent Floating AI Chat Assistant */}
+      <ChatAssistant />
     </div>
   );
 }

@@ -1,81 +1,135 @@
 services:
-  # PostgreSQL Production Database
   db:
     image: postgres:16-alpine
     container_name: rentsense-db
     restart: unless-stopped
+    env_file:
+      - .env
     environment:
-      POSTGRES_USER: rentsense_user
-      POSTGRES_PASSWORD: rentsense_secure_password
-      POSTGRES_DB: rentsense_db
-    ports:
-      - "5432:5432"
+      POSTGRES_USER: ${POSTGRES_USER:-rentsense_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${POSTGRES_DB:-rentsense_db}
+    expose:
+      - "5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U rentsense_user -d rentsense_db"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-rentsense_user} -d ${POSTGRES_DB:-rentsense_db}"]
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - rentsense
 
-  # FastAPI Backend Service
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
     container_name: rentsense-backend
     restart: unless-stopped
+    env_file:
+      - .env
     depends_on:
       db:
         condition: service_healthy
     environment:
-      ENVIRONMENT: production
-      LOG_LEVEL: INFO
+      ENVIRONMENT: ${ENVIRONMENT:-production}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
       DEBUG: "false"
-      DATABASE_URL: postgresql+psycopg://rentsense_user:rentsense_secure_password@db:5432/rentsense_db
-      FRONTEND_URL: http://localhost:3000
-      CORS_ORIGINS: http://localhost:3000,http://127.0.0.1:3000
-    ports:
-      - "8000:8000"
+      DATABASE_URL: ${DATABASE_URL:?Set DATABASE_URL in .env}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost,http://127.0.0.1,http://localhost:3000,http://127.0.0.1:3000}
+      AUTH_ENABLED: ${AUTH_ENABLED:-false}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:?Set JWT_SECRET_KEY in .env}
+      JWT_EXPIRE_MINUTES: ${JWT_EXPIRE_MINUTES:-480}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@rentsense.local}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?Set ADMIN_PASSWORD in .env}
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      ALERT_NOTIFICATION_EMAIL_TO: ${ALERT_NOTIFICATION_EMAIL_TO:-}
+      ALERT_NOTIFICATION_EMAIL_FROM: ${ALERT_NOTIFICATION_EMAIL_FROM:-RentSense Alerts <onboarding@resend.dev>}
+      ALERT_NOTIFICATION_MIN_SEVERITY: ${ALERT_NOTIFICATION_MIN_SEVERITY:-MEDIUM}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-2.5-flash}
+      GEMINI_MAX_TURNS: ${GEMINI_MAX_TURNS:-6}
+    expose:
+      - "8000"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 15s
       timeout: 5s
-      retries: 3
+      retries: 5
+    networks:
+      - rentsense
 
-  # Next.js Frontend Service
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        NEXT_PUBLIC_API_URL: http://localhost:8000
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost}
+        NEXT_PUBLIC_MAPBOX_TOKEN: ${NEXT_PUBLIC_MAPBOX_TOKEN:-}
     container_name: rentsense-frontend
     restart: unless-stopped
+    env_file:
+      - .env
     depends_on:
       backend:
         condition: service_healthy
-    ports:
-      - "3000:3000"
+    environment:
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost}
+      NEXT_PUBLIC_MAPBOX_TOKEN: ${NEXT_PUBLIC_MAPBOX_TOKEN:-}
+    expose:
+      - "3000"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3000/"]
       interval: 15s
       timeout: 5s
-      retries: 3
+      retries: 5
+    networks:
+      - rentsense
 
-  # Optional Telemetry Simulator Profile
   simulator:
     build:
       context: ./simulator
       dockerfile: Dockerfile
     container_name: rentsense-simulator
     profiles: ["simulation"]
+    restart: unless-stopped
+    env_file:
+      - .env
     depends_on:
       backend:
         condition: service_healthy
     environment:
-      API_BASE_URL: http://backend:8000
-      INTERVAL_SECONDS: 5
+      API_BASE_URL: ${SIMULATOR_API_BASE_URL:-http://backend:8000}
+      SIMULATOR_INTERVAL_SECONDS: ${SIMULATOR_INTERVAL_SECONDS:-5}
+    networks:
+      - rentsense
+
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: rentsense-nginx
+    restart: unless-stopped
+    depends_on:
+      frontend:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    networks:
+      - rentsense
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+networks:
+  rentsense:
+    driver: bridge
 
 volumes:
   pgdata:

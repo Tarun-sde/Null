@@ -1,7 +1,7 @@
 import os
 from pathlib import Path
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from typing import List
+from typing import List, Optional
 
 # Base backend directory
 BACKEND_DIR = Path(__file__).resolve().parent.parent.parent
@@ -31,6 +31,26 @@ class Settings(BaseSettings):
 
     # Optional RBAC / Auth Mode (ADMIN, OPERATIONS, VIEWER)
     AUTH_ENABLED: bool = os.getenv("AUTH_ENABLED", "false").lower() in ("true", "1", "yes")
+
+    # JWT Authentication
+    JWT_SECRET_KEY: str = os.getenv("JWT_SECRET_KEY", "change-me-in-production-use-256-bit-random-key")
+    JWT_ALGORITHM: str = "HS256"
+    JWT_EXPIRE_MINUTES: int = int(os.getenv("JWT_EXPIRE_MINUTES", "480"))
+
+    # Admin bootstrap credentials (seeded on first boot, never hardcoded)
+    ADMIN_EMAIL: str = os.getenv("ADMIN_EMAIL", "admin@rentsense.local")
+    ADMIN_PASSWORD: str = os.getenv("ADMIN_PASSWORD", "")
+
+    # Email Notifications via Resend
+    RESEND_API_KEY: Optional[str] = os.getenv("RESEND_API_KEY", None)
+    ALERT_NOTIFICATION_EMAIL_TO: Optional[str] = os.getenv("ALERT_NOTIFICATION_EMAIL_TO", None)
+    ALERT_NOTIFICATION_EMAIL_FROM: str = os.getenv("ALERT_NOTIFICATION_EMAIL_FROM", "RentSense Alerts <onboarding@resend.dev>")
+    ALERT_NOTIFICATION_MIN_SEVERITY: str = os.getenv("ALERT_NOTIFICATION_MIN_SEVERITY", "MEDIUM")
+
+    # AI Chatbot Assistant via Google Gemini
+    GEMINI_API_KEY: Optional[str] = os.getenv("GEMINI_API_KEY", None)
+    GEMINI_MODEL: str = os.getenv("GEMINI_MODEL", "gemini-3.6-flash")
+    GEMINI_MAX_TURNS: int = int(os.getenv("GEMINI_MAX_TURNS", "6"))
 
     model_config = SettingsConfigDict(
         env_file=".env",

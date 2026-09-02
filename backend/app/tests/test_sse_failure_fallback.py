@@ -2,7 +2,6 @@ import os
 import sys
 import asyncio
 import pytest
-from datetime import datetime, timezone
 
 # Ensure backend root is on sys.path for direct script execution
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
@@ -24,26 +23,28 @@ async def test_sse_failure_and_polling_recovery():
     assert initial_subscribers >= 1
     print("1. [LIVE] SSE subscriber connected (Subscriber count >= 1)")
 
-    # 2. Ingest telemetry while LIVE
-    post_res = client.post("/api/v1/telemetry", json={
-        "equipment_id": "EQX1005",
-        "latitude": 37.8052,
-        "longitude": -122.2708,
-        "engine_hours": 50.0,
-        "idle_hours": 3.0,
-        "fuel_pct": 30.0,
-    })
-    assert post_res.status_code == 201
-    
-    # Verify event pushed to active subscriber queue
-    event = await asyncio.wait_for(queue.get(), timeout=2.0)
-    assert event["type"] == "telemetry"
-    assert event["data"]["equipment_id"] == "EQX1005"
-    assert event["data"]["engine_hours"] == 50.0
-    print("2. [LIVE] Ingested telemetry for EQX1005, event received over SSE queue")
+    try:
+        # 2. Ingest telemetry while LIVE
+        post_res = client.post("/api/v1/telemetry", json={
+            "equipment_id": "EQX1005",
+            "latitude": 37.8052,
+            "longitude": -122.2708,
+            "engine_hours": 50.0,
+            "idle_hours": 3.0,
+            "fuel_pct": 30.0,
+        })
+        assert post_res.status_code == 201
 
-    # 3. Simulate SSE Interruption (Disconnect client)
-    connection_manager.disconnect(queue)
+        # Verify event pushed to active subscriber queue
+        event = await asyncio.wait_for(queue.get(), timeout=2.0)
+        assert event["type"] == "telemetry"
+        assert event["data"]["equipment_id"] == "EQX1005"
+        assert event["data"]["engine_hours"] == 50.0
+        print("2. [LIVE] Ingested telemetry for EQX1005, event received over SSE queue")
+    finally:
+        # 3. Simulate SSE Interruption (Disconnect client)
+        connection_manager.disconnect(queue)
+
     assert connection_manager.subscriber_count == initial_subscribers - 1
     print("3. [INTERRUPTION] SSE connection interrupted and client disconnected")
 
@@ -71,25 +72,28 @@ async def test_sse_failure_and_polling_recovery():
     assert connection_manager.subscriber_count == initial_subscribers
     print("6. [RECOVERY] SSE reconnected successfully (Status: LIVE restored)")
 
-    # Ingest another event to verify recovered SSE stream receives events
-    post_res3 = client.post("/api/v1/telemetry", json={
-        "equipment_id": "EQX1005",
-        "latitude": 37.8058,
-        "longitude": -122.2712,
-        "engine_hours": 51.0,
-        "idle_hours": 3.2,
-        "fuel_pct": 29.0,
-    })
-    assert post_res3.status_code == 201
-    recovered_event = await asyncio.wait_for(recovered_queue.get(), timeout=2.0)
-    assert recovered_event["data"]["engine_hours"] == 51.0
-    print("7. [LIVE RESTORED] Recovered SSE stream verified receiving live telemetry events")
+    try:
+        # Ingest another event to verify recovered SSE stream receives events
+        post_res3 = client.post("/api/v1/telemetry", json={
+            "equipment_id": "EQX1005",
+            "latitude": 37.8058,
+            "longitude": -122.2712,
+            "engine_hours": 51.0,
+            "idle_hours": 3.2,
+            "fuel_pct": 29.0,
+        })
+        assert post_res3.status_code == 201
+        recovered_event = await asyncio.wait_for(recovered_queue.get(), timeout=2.0)
+        assert recovered_event["data"]["engine_hours"] == 51.0
+        print("7. [LIVE RESTORED] Recovered SSE stream verified receiving live telemetry events")
+    finally:
+        connection_manager.disconnect(recovered_queue)
 
-    connection_manager.disconnect(recovered_queue)
     print("\n=== COMPLETE LIVE -> INTERRUPTION -> POLLING -> RECOVERY VERIFIED ===")
 
 
 if __name__ == "__main__":
     asyncio.run(test_sse_failure_and_polling_recovery())
+
 
 

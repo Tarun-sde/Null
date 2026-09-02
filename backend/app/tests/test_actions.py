@@ -22,8 +22,8 @@ def setup_db():
     db.close()
 
 
-def test_create_action_success():
-    res = client.post(
+def test_create_action_success(auth_client):
+    res = auth_client.post(
         "/api/v1/actions",
         json={
             "equipment_id": "EQX1001",
@@ -42,8 +42,8 @@ def test_create_action_success():
     assert data["priority"] == "HIGH"
 
 
-def test_create_action_invalid_type_rejected():
-    res = client.post(
+def test_create_action_invalid_type_rejected(auth_client):
+    res = auth_client.post(
         "/api/v1/actions",
         json={
             "equipment_id": "EQX1001",
@@ -53,8 +53,8 @@ def test_create_action_invalid_type_rejected():
     assert res.status_code == 400
 
 
-def test_create_action_unknown_equipment_rejected():
-    res = client.post(
+def test_create_action_unknown_equipment_rejected(auth_client):
+    res = auth_client.post(
         "/api/v1/actions",
         json={
             "equipment_id": "UNKNOWN_999",
@@ -64,10 +64,10 @@ def test_create_action_unknown_equipment_rejected():
     assert res.status_code == 400
 
 
-def test_complete_return_action_closes_rental_resolves_alert_and_records_impact():
+def test_complete_return_action_closes_rental_resolves_alert_and_records_impact(auth_client):
     db = SessionLocal()
     # EQX1006 is overdue
-    res_create = client.post(
+    res_create = auth_client.post(
         "/api/v1/actions",
         json={
             "equipment_id": "EQX1006",
@@ -85,7 +85,7 @@ def test_complete_return_action_closes_rental_resolves_alert_and_records_impact(
     assert alert_before is not None
 
     # Complete action
-    res_complete = client.post(
+    res_complete = auth_client.post(
         f"/api/v1/actions/{action_id}/complete",
         json={
             "notes": "Off-rent physical inspection complete, zero damage",
@@ -116,13 +116,13 @@ def test_complete_return_action_closes_rental_resolves_alert_and_records_impact(
     impact = db.query(ImpactRecord).filter(ImpactRecord.action_id == action_id).first()
     assert impact is not None
     assert impact.realized_amount > 0
-    assert impact.currency == "USD"
+    assert impact.currency == "INR"
     db.close()
 
 
-def test_complete_reassign_action_updates_site_and_resolves_alerts():
+def test_complete_reassign_action_updates_site_and_resolves_alerts(auth_client):
     db = SessionLocal()
-    res_create = client.post(
+    res_create = auth_client.post(
         "/api/v1/actions",
         json={
             "equipment_id": "EQX1001",
@@ -134,7 +134,7 @@ def test_complete_reassign_action_updates_site_and_resolves_alerts():
     )
     action_id = res_create.json()["id"]
 
-    res_complete = client.post(
+    res_complete = auth_client.post(
         f"/api/v1/actions/{action_id}/complete",
         json={
             "notes": "Reassigned to Highland Medical Center",
@@ -157,33 +157,33 @@ def test_complete_reassign_action_updates_site_and_resolves_alerts():
     # Verify Realized Impact Record
     impact = db.query(ImpactRecord).filter(ImpactRecord.action_id == action_id).first()
     assert impact is not None
-    assert impact.realized_amount == 450.0 * 3.0  # $1,350 realized savings
+    assert impact.realized_amount == 18500.0 * 3.0  # ₹55,500 realized savings
     db.close()
 
 
-def test_complete_action_idempotency_error():
-    res_create = client.post(
+def test_complete_action_idempotency_error(auth_client):
+    res_create = auth_client.post(
         "/api/v1/actions",
         json={"equipment_id": "EQX1001", "action_type": "INVESTIGATE"},
     )
     action_id = res_create.json()["id"]
 
-    res_1 = client.post(f"/api/v1/actions/{action_id}/complete", json={})
+    res_1 = auth_client.post(f"/api/v1/actions/{action_id}/complete", json={})
     assert res_1.status_code == 200
 
     # Second completion attempt should fail
-    res_2 = client.post(f"/api/v1/actions/{action_id}/complete", json={})
+    res_2 = auth_client.post(f"/api/v1/actions/{action_id}/complete", json={})
     assert res_2.status_code == 400
 
 
-def test_cancel_action():
-    res_create = client.post(
+def test_cancel_action(auth_client):
+    res_create = auth_client.post(
         "/api/v1/actions",
         json={"equipment_id": "EQX1001", "action_type": "REASSIGN"},
     )
     action_id = res_create.json()["id"]
 
-    res_cancel = client.post(
+    res_cancel = auth_client.post(
         f"/api/v1/actions/{action_id}/cancel",
         json={"reason": "Jobsite requested cancellation"},
     )
@@ -191,17 +191,17 @@ def test_cancel_action():
     assert res_cancel.json()["status"] == "CANCELLED"
 
     # Trying to complete cancelled action should fail
-    res_comp = client.post(f"/api/v1/actions/{action_id}/complete", json={})
+    res_comp = auth_client.post(f"/api/v1/actions/{action_id}/complete", json={})
     assert res_comp.status_code == 400
 
 
-def test_manual_alert_resolve_endpoint():
+def test_manual_alert_resolve_endpoint(auth_client):
     db = SessionLocal()
     open_alert = db.query(Alert).filter(Alert.status == "OPEN").first()
     assert open_alert is not None
     alert_id = open_alert.id
 
-    res_resolve = client.post(
+    res_resolve = auth_client.post(
         f"/api/v1/alerts/{alert_id}/resolve",
         json={
             "resolution_notes": "Operator inspected and cleared alert",

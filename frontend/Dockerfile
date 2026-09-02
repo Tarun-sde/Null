@@ -9,9 +9,11 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# Pass build-time environment variable for backend URL
+# Pass build-time environment variables for Next.js public client-side inlining
 ARG NEXT_PUBLIC_API_URL
+ARG NEXT_PUBLIC_MAPBOX_TOKEN
 ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:8000}
+ENV NEXT_PUBLIC_MAPBOX_TOKEN=${NEXT_PUBLIC_MAPBOX_TOKEN}
 ENV NODE_ENV=production
 
 RUN npm run build
@@ -22,6 +24,7 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
+ENV NEXT_PUBLIC_MAPBOX_TOKEN=${NEXT_PUBLIC_MAPBOX_TOKEN}
 
 # Install curl for health check
 RUN apk add --no-cache curl

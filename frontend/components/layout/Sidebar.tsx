@@ -2,7 +2,7 @@
 
 import React from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   LayoutDashboard,
   Truck,
@@ -10,19 +10,27 @@ import {
   Zap,
   TrendingUp,
   DollarSign,
-  HelpCircle,
   Settings,
-  ShieldCheck,
+  LogOut,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { logout } from "@/lib/auth";
 
-const NAV_ITEMS = [
+interface NavItem {
+  label: string;
+  href: string;
+  icon: React.ComponentType<{ className?: string }>;
+  exact?: boolean;
+  badge?: string;
+}
+
+const NAV_ITEMS: NavItem[] = [
   { label: "Dashboard", href: "/", icon: LayoutDashboard, exact: true },
   { label: "Fleet Assets", href: "/assets", icon: Truck },
-  { label: "Handoff Scan", href: "/scan", icon: QrCode, badge: "Phase 3" },
-  { label: "Action Queue", href: "/actions", icon: Zap, badge: "Phase 6" },
-  { label: "Demand Forecast", href: "/forecast", icon: TrendingUp, badge: "Phase 5" },
-  { label: "Avoided Impact", href: "/impact", icon: DollarSign, badge: "Phase 6" },
+  { label: "Handoff Scan", href: "/scan", icon: QrCode },
+  { label: "Action Queue", href: "/actions", icon: Zap },
+  { label: "Demand Forecast", href: "/forecast", icon: TrendingUp },
+  { label: "Avoided Impact", href: "/impact", icon: DollarSign },
 ];
 
 interface SidebarProps {
@@ -32,6 +40,12 @@ interface SidebarProps {
 
 export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const pathname = usePathname();
+  const router = useRouter();
+
+  const handleLogout = async () => {
+    await logout();
+    router.push("/login");
+  };
 
   const isLinkActive = (item: typeof NAV_ITEMS[0]) => {
     if (item.exact) {
@@ -142,9 +156,14 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
               <Settings className="size-3.5" />
               <span>Settings</span>
             </button>
-            <button className="flex items-center gap-1.5 hover:text-black transition-colors">
-              <HelpCircle className="size-3.5" />
-              <span>Docs</span>
+            <button
+              id="logout-button"
+              onClick={handleLogout}
+              className="flex items-center gap-1.5 hover:text-red-600 transition-colors"
+              aria-label="Sign out"
+            >
+              <LogOut className="size-3.5" />
+              <span>Sign Out</span>
             </button>
           </div>
         </div>

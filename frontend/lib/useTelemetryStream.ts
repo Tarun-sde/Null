@@ -12,7 +12,7 @@ interface UseTelemetryStreamOptions {
   enabled?: boolean;
 }
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "";
 const POLLING_INTERVAL_MS = 6000;
 
 export function useTelemetryStream({
@@ -27,13 +27,16 @@ export function useTelemetryStream({
   const pollingTimerRef = useRef<NodeJS.Timeout | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isPollingActiveRef = useRef(false);
+  const connectSSERef = useRef<() => void>(() => undefined);
 
   // Stable callbacks via ref
   const onTelemetryRef = useRef(onTelemetry);
-  onTelemetryRef.current = onTelemetry;
-
   const onFullRefreshRef = useRef(onFullRefresh);
-  onFullRefreshRef.current = onFullRefresh;
+
+  useEffect(() => {
+    onTelemetryRef.current = onTelemetry;
+    onFullRefreshRef.current = onFullRefresh;
+  }, [onTelemetry, onFullRefresh]);
 
   // Execute fallback poll
   const executePoll = useCallback(async () => {
@@ -125,7 +128,7 @@ export function useTelemetryStream({
         reconnectTimeoutRef.current = setTimeout(() => {
           if (enabled) {
             console.info("[TelemetryStream] Attempting SSE reconnection...");
-            connectSSE();
+            connectSSERef.current();
           }
         }, 5000);
       };
@@ -136,12 +139,16 @@ export function useTelemetryStream({
   }, [enabled, startPolling, stopPolling]);
 
   useEffect(() => {
+    connectSSERef.current = connectSSE;
+  }, [connectSSE]);
+
+  useEffect(() => {
     if (!enabled) {
-      setConnectionState("OFFLINE");
+      queueMicrotask(() => setConnectionState("OFFLINE"));
       return;
     }
 
-    connectSSE();
+    queueMicrotask(connectSSE);
 
     return () => {
       if (eventSourceRef.current) {

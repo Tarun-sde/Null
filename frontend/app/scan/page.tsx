@@ -7,9 +7,7 @@ import {
   Camera,
   Search,
   ArrowRight,
-  CheckCircle2,
   AlertCircle,
-  RefreshCw,
   Truck,
   MapPin,
   User,
@@ -23,8 +21,8 @@ import { StatusBadge } from "@/components/ui/StatusBadge";
 import { CheckoutModal } from "@/components/handoff/CheckoutModal";
 import { CheckinModal } from "@/components/handoff/CheckinModal";
 import { fetchEquipmentDetail } from "@/lib/api";
-import { EquipmentDetail, EquipmentStatus } from "@/types";
-import { cn } from "@/lib/utils";
+import { EquipmentDetail } from "@/types";
+import { getErrorMessage, formatDayRate } from "@/lib/utils";
 
 export default function ScanPage() {
   const [manualId, setManualId] = useState("");
@@ -36,7 +34,7 @@ export default function ScanPage() {
   const [cameraActive, setCameraActive] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const qrRegionId = "html5qr-code-full-region";
-  const scannerRef = useRef<any>(null);
+  const scannerRef = useRef<import("html5-qrcode").Html5Qrcode | null>(null);
 
   // Modal State
   const [checkoutModalOpen, setCheckoutModalOpen] = useState(false);
@@ -52,13 +50,13 @@ export default function ScanPage() {
       const detail = await fetchEquipmentDetail(cleanId);
       setIdentifiedAsset(detail);
       setManualId(cleanId);
-    } catch (err: any) {
-      console.error("Equipment lookup error:", err);
+    } catch (err: unknown) {
+      console.info("Equipment lookup rejected:", err);
       setIdentifiedAsset(null);
-      if (err.message === "NOT_FOUND") {
+      if (getErrorMessage(err, "") === "NOT_FOUND") {
         setLookupError(`Equipment asset "${cleanId}" was not found in the fleet registry.`);
       } else {
-        setLookupError(err.message || "Failed to communicate with fleet backend.");
+        setLookupError(getErrorMessage(err, "Failed to communicate with fleet backend."));
       }
     } finally {
       setIdentifying(false);
@@ -96,7 +94,7 @@ export default function ScanPage() {
           // Frame error (ignore normal scanning frames)
         }
       );
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.warn("Camera init failed:", err);
       setCameraError(
         "Camera stream unavailable or permissions denied. Please use manual ID entry."
@@ -109,7 +107,7 @@ export default function ScanPage() {
     if (scannerRef.current && scannerRef.current.isScanning) {
       try {
         await scannerRef.current.stop();
-      } catch (e) {
+      } catch {
         // Ignore
       }
     }
@@ -240,7 +238,7 @@ export default function ScanPage() {
 
               {/* Sample Quick Asset Chips */}
               <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-[#7a7a7a]">
-                <span>Challenge Quick Select:</span>
+                <span>Quick Select:</span>
                 {["EQX1007", "EQX1001", "EQX1002", "EQX1004", "EQX1006"].map((chip) => (
                   <button
                     key={chip}
@@ -332,7 +330,7 @@ export default function ScanPage() {
                     <span>Contract Day Rate</span>
                   </span>
                   <span className="font-mono font-bold text-black text-sm block mt-1">
-                    ${identifiedAsset.daily_rate}/day
+                    {formatDayRate(identifiedAsset.daily_rate)}
                   </span>
                 </div>
 
@@ -417,7 +415,7 @@ export default function ScanPage() {
           equipmentType={identifiedAsset.type}
           dailyRate={identifiedAsset.daily_rate}
           dealer={identifiedAsset.dealer}
-          onSuccess={(res) => {
+          onSuccess={() => {
             lookupEquipment(identifiedAsset.id);
           }}
         />
@@ -433,7 +431,7 @@ export default function ScanPage() {
           currentSiteName={identifiedAsset.site?.name}
           currentOperatorName={identifiedAsset.operator?.name}
           currentStatus={identifiedAsset.status}
-          onSuccess={(res) => {
+          onSuccess={() => {
             lookupEquipment(identifiedAsset.id);
           }}
         />

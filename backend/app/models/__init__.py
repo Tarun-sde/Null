@@ -10,6 +10,7 @@ from app.models.recommendation import Recommendation
 from app.models.audit_event import AuditEvent
 from app.models.action import Action
 from app.models.impact import ImpactRecord
+from app.models.user import User
 
 __all__ = [
     "Base",
@@ -24,5 +25,6 @@ __all__ = [
     "AuditEvent",
     "Action",
     "ImpactRecord",
+    "User",
 ]
 

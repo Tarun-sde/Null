@@ -85,16 +85,16 @@ def test_rule_overdue_rental():
         checked_out_at=ANCHOR_TIME - timedelta(days=10),
         due_at=due_at,
         checked_in_at=None,
-        daily_rate=180.0,
+        daily_rate=7500.0,
     )
-    res = evaluate_overdue_rental("EQX1006", rental=rental, daily_rate=180.0, now=ANCHOR_TIME)
+    res = evaluate_overdue_rental("EQX1006", rental=rental, daily_rate=7500.0, now=ANCHOR_TIME)
     
     assert res is not None
     assert res.anomaly_type == "OVERDUE"
     assert res.anomaly_score >= 80
     assert res.severity == "CRITICAL"
     assert "48.0h overdue" in res.explanation
-    assert "$180.00" in res.explanation
+    assert "₹7,500.00" in res.explanation
     assert res.supporting_signals["overdue_hours"] == 48.0
 
 
@@ -176,8 +176,11 @@ def test_score_and_explanation_determinism():
 def test_alert_deduplication_and_resolution():
     db = SessionLocal()
     try:
-        # 1. Clean test equipment alerts
+        # 1. Clean and setup test equipment
         db.query(Alert).filter(Alert.equipment_id == "TEST-EQ-001").delete()
+        test_eq = db.query(Equipment).filter(Equipment.id == "TEST-EQ-001").first()
+        if not test_eq:
+            db.add(Equipment(id="TEST-EQ-001", type="Excavator", dealer="Test Dealer", daily_rate=500.0))
         db.commit()
 
         # 2. Simulate first anomaly cycle -> creates 1 alert
@@ -210,5 +213,6 @@ def test_alert_deduplication_and_resolution():
         assert resolved_count == 2
     finally:
         db.query(Alert).filter(Alert.equipment_id == "TEST-EQ-001").delete()
+        db.query(Equipment).filter(Equipment.id == "TEST-EQ-001").delete()
         db.commit()
         db.close()

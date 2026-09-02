@@ -1,17 +1,9 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
-  TrendingUp,
-  BarChart3,
-  ShieldCheck,
   Building2,
-  Calendar,
   Layers,
-  Sparkles,
-  Info,
-  CheckCircle2,
-  Filter,
 } from "lucide-react";
 import {
   ResponsiveContainer,
@@ -22,17 +14,14 @@ import {
   Tooltip,
   CartesianGrid,
   Legend,
-  AreaChart,
-  Area,
 } from "recharts";
 import { AppShell } from "@/components/layout/AppShell";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { MetricCard } from "@/components/ui/MetricCard";
-import { CardSkeleton, TableSkeleton } from "@/components/ui/SkeletonLoader";
-import { EmptyState } from "@/components/ui/EmptyState";
+import { TableSkeleton } from "@/components/ui/SkeletonLoader";
 import { fetchForecasts, fetchSites } from "@/lib/api";
 import { Forecast, Site } from "@/types";
-import { cn } from "@/lib/utils";
+import { cn, getErrorMessage } from "@/lib/utils";
 
 export default function ForecastPage() {
   const [forecasts, setForecasts] = useState<Forecast[]>([]);
@@ -41,9 +30,9 @@ export default function ForecastPage() {
   const [selectedType, setSelectedType] = useState<string>("ALL");
   const [horizonWeeks, setHorizonWeeks] = useState<number>(4);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [, setError] = useState<string | null>(null);
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -53,17 +42,17 @@ export default function ForecastPage() {
       ]);
       setForecasts(fData);
       setSites(sData);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Error loading forecasts:", err);
-      setError(err.message || "Failed to load forecast data");
+      setError(getErrorMessage(err, "Failed to load forecast data"));
     } finally {
       setLoading(false);
     }
-  };
+  }, [horizonWeeks]);
 
   useEffect(() => {
-    loadData();
-  }, [horizonWeeks]);
+    queueMicrotask(() => void loadData());
+  }, [loadData]);
 
   const filteredForecasts = forecasts.filter((f) => {
     const matchSite = selectedSiteId === "ALL" || f.site_id === selectedSiteId;
@@ -91,13 +80,14 @@ export default function ForecastPage() {
     : 0.35;
 
   // Aggregate by week for chart visualization
-  const weekMap: Record<string, any> = {};
+  const weekMap: Record<string, { week: string; total: number; [key: string]: string | number }> = {};
   filteredForecasts.forEach((f) => {
     const weekLabel = `Week ${new Date(f.forecast_date).toLocaleDateString([], { month: "short", day: "numeric" })}`;
     if (!weekMap[weekLabel]) {
       weekMap[weekLabel] = { week: weekLabel, total: 0 };
     }
-    weekMap[weekLabel][f.equipment_type] = (weekMap[weekLabel][f.equipment_type] || 0) + f.predicted_units;
+    const existingValue = weekMap[weekLabel][f.equipment_type];
+    weekMap[weekLabel][f.equipment_type] = (typeof existingValue === "number" ? existingValue : 0) + f.predicted_units;
     weekMap[weekLabel].total += f.predicted_units;
   });
   const chartData = Object.values(weekMap);
@@ -147,7 +137,7 @@ export default function ForecastPage() {
       </section>
 
       {/* KPI Cards */}
-      <section className="grid grid-cols-2 lg:grid-cols-4 gap-5 mb-10">
+      <section className="grid grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-5 mb-10">
         <MetricCard
           title="Projected Demand"
           value={`${totalDemand} Units`}

@@ -17,6 +17,15 @@ class EquipmentBase(BaseModel):
     metadata_json: Optional[Dict[str, Any]] = None
 
 
+class EquipmentCreate(BaseModel):
+    id: str
+    type: str
+    dealer: str
+    daily_rate: float
+    model: Optional[str] = None
+    serial: Optional[str] = None
+
+
 class EquipmentListItem(EquipmentBase):
     status: str
     current_rental: Optional[RentalResponse] = None
